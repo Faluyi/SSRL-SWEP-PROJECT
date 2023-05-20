@@ -1,0 +1,262 @@
+{% extends 'layouts/base.html' %}
+
+{% block content %}
+    {% if user_profile.role != "Admin"%}
+    <div class=" container d-flex flex-wrap p-3 mb-3" >
+      <div class="card mt-4" style="width:100vh;height:100vh; margin:auto;">
+        
+      <div class="card-header">
+        <div class="row">
+          <div class="col">
+          Stack Members
+          </div>
+          <div class="col text-end">
+            <div class="dropdown">
+              <button type="button" class="border-0" data-bs-toggle="dropdown"><i class="bi bi-three-dots-vertical"></i></button>
+                
+                <ul class="dropdown-menu">
+                  <li><a class="dropdown-item" href="#">View all</a></li>
+                  <li><a class="dropdown-item" href="#">Link 2</a></li>
+                  <li><a class="dropdown-item" href="#">Link 3</a></li>
+                </ul>
+          
+            </div>
+          </div>
+        </div>
+      </div>
+
+        <div class="card-body  p-5">
+          <div class="d-flex flex-wrap">
+            {%if members%}
+              {%for member in members%}
+                <div class="d-flex align-items-center" style="margin:auto;">
+                  <form action= method="post">
+                  <a href="#" button type="submit"><img src="/static/images/{{member.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></button></a>
+                  <div class="text-center">
+                    <h6>{{member.firstname}}</h6>
+                    <h6>{{member.niche}}</h6>
+                  </div>
+                </form>
+                </div>
+              {%endfor%}
+
+              {%else%}
+                <div class="d-flex align-items-center" style="margin:auto;">
+                  <a href=""><img src="/static/images/person.svg" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></a>
+                </div>
+                <div class="d-flex align-items-center" style="margin:auto;">
+                  <img src="/static/images/person.svg" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;">
+                  
+                </div>
+                
+                <div class="d-flex align-items-center" style="margin:auto;">
+                  <img src="/static/images/person.svg" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;">
+                  
+                </div>
+
+                <div class="d-flex align-items-center" style="margin:auto;">
+                  <img src="/static/images/person.svg" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;">
+                  
+                </div>
+           {%endif%}
+          </div>
+        </div>
+      </div>
+    </div>
+    {%endif%}
+
+
+
+  {% if user_profile.role =="Admin"%}
+    <div class=" container d-flex flex-column flex-wrap p-3 mb-3" >
+  
+        <ul class="nav nav-tabs nav-justified mt-3">
+            <li class="nav-item">
+              <a class="nav-link active" data-bs-toggle="tab" href="#software">Software</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" data-bs-toggle="tab" href="#hardware">Hardware</a>
+            </li>
+        </ul>
+    
+          <div class="tab-content">
+    
+            <div  class="tab-pane active" id="software"> 
+              <div class="container card" style="height:100vh;"> 
+                <div class="card-body mt-4">
+                    
+                    <div class="row">
+                      <div class="col">
+                        <h4 class="card-title">Leads</h4>
+                      </div>
+                      <div class="col text-end">
+                        <div class="dropdown">
+                          <button type="button" class="border-0" data-bs-toggle="dropdown"><i class="bi bi-person-plus"></i></button>
+                            
+                            <ul class="dropdown-menu p-2" style="width:50px;">
+                              {%for intern in interns%}
+                              {%if intern.stack=="Software"%}
+                              <div class="d-flex flex-row">
+                                  <li><img src="/static/images/{{intern.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:30px;height:30px;"></a>
+                                  
+                                    <p>{{intern.fullname}}</p>
+                                  </li>
+                                </div>
+                              
+                              {%endif%}
+                              {%endfor%}
+                            </ul>
+                      
+                        </div>
+                      </div>
+                    </div>
+                    <div class="d-flex flex-wrap mt-4 mb-4">
+                      {% if leads%}
+                        {%for lead in leads%}
+                          {%if lead.stack=="Software" %}
+                            <div class="d-flex align-items-center me-5 mb-3 ">
+                              <a href=""><img src="/static/images/{{lead.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></a>
+                              <div class="text-center">
+                                <h6>{{lead.firstname}}</h6>
+                                <h6>{{lead.niche}}</h6>
+                              </div>
+                            </div>
+                          {%endif%}
+                          
+                        {%endfor%}
+                      {%else%}
+                      <div class="d-flex align-items-center me-5 mb-3">
+                        <a href=""><img src="/static/images/person.svg" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></a>
+                      </div>
+                      {%endif%}
+                    </div>
+                      
+                    <h4 class="card-title">Interns</h4>
+                    <div class="d-flex flex-wrap mt-4 mb-4">
+                      {%if interns %}
+                      
+                        {%for intern in interns%}
+                          {%if intern.stack=="Hardware"%}
+                          <div class="d-flex align-items-center" style="margin:auto;">
+                              <a href=""><img src="/static/images/{{intern.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></a>
+                              <div class="text-center">
+                                <h6>{{intern.firstname}}</h6>
+                                <h6>{{intern.niche}}</h6>
+                              </div>
+                            </div>
+                          {%endif%}
+                        {%endfor%}
+                      {%else%}
+                          <div class="d-flex align-items-center"style="margin:auto;">
+                            <a href=""><img src="/static/images/person.svg" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></a>
+                            
+                          </div>
+                          <div class="d-flex align-items-center " style="margin:auto;">
+                            <img src="/static/images/person.svg" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;">
+                            
+                          </div>
+                          
+                          <div class="d-flex align-items-center " style="margin:auto;">
+                            <img src="/static/images/person.svg" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;">
+                          </div>
+              
+                          <div class="d-flex align-items-center" style="margin:auto;">
+                            <img src="/static/images/person.svg" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;">
+                            
+                          </div> 
+                      {%endif%}
+
+
+                    </div>
+                </div>
+
+              </div>
+    
+            </div>
+
+            <div  class="tab-pane container fade" id="hardware">  
+                    <div class="container card" style="height:100vh;"> 
+                <div class="card-body mt-4">
+                  <div class="row">
+                    <div class="col">
+                      <h4 class="card-title">Leads</h4>
+                    </div>
+                    <div class="col text-end">
+                      <div class="dropdown">
+                        <button type="button" class="border-0" data-bs-toggle="dropdown"><i class="bi bi-person-plus"></i></button>
+                          
+                          <ul class="dropdown-menu p-2" style="width:50px;">
+                            {%for intern in interns%}
+                            {%if intern.stack=="Hardware"%}
+                            <div class="d-flex flex-row">
+                                <li><img src="/static/images/{{intern.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:30px;height:30px;"></a>
+                                
+                                  <p>{{intern.fullname}}</p>
+                                </li>
+                              </div>
+                            
+                            {%endif%}
+                            {%endfor%}
+                          </ul>
+                    
+                      </div>
+                    </div>
+                  </div>
+                      
+                    <h4 class="card-title">Interns</h4>
+                    <div class="d-flex flex-wrap mt-4 mb-4">
+                      {%if interns %}
+                      
+                        {%for intern in interns%}
+                          {%if intern.stack=="Hardware"%}
+                          <div class="d-flex align-items-center" style="margin:auto;">
+                              <a href=""><img src="/static/images/{{intern.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></a>
+                              <div class="text-center">
+                                <h6>{{intern.firstname}}</h6>
+                                <h6>{{intern.niche}}</h6>
+                              </div>
+                            </div>
+                          {%endif%}
+                        {%endfor%}
+                      {%else%}
+                          <div class="d-flex align-items-center" style="margin:auto;">
+                            <a href=""><img src="/static/images/person.svg" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></a>
+                            
+                          </div>
+                          <div class="d-flex align-items-center " style="margin:auto;">
+                            <img src="/static/images/person.svg" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;">
+                            
+                          </div>
+                          
+                          <div class="d-flex align-items-center" style="margin:auto;">
+                            <img src="/static/images/person.svg" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;">
+                          </div>
+              
+                          <div class="d-flex align-items-center" style="margin:auto;">
+                            <img src="/static/images/person.svg" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;">
+                            
+                          </div> 
+                      {%endif%}
+
+                    </div>
+                </div>
+
+              </div>
+            </div>
+          
+
+          </div>
+            
+    </div>
+  
+    {%endif%}
+
+
+
+
+
+{% endblock content %}
+
+
+
+

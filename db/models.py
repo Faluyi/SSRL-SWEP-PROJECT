@@ -1,4 +1,5 @@
 from pymongo import MongoClient
+from bson.objectid import ObjectId 
 import string, random
 
 client = MongoClient('mongodb://localhost:27017/')
@@ -9,7 +10,7 @@ Eqpt = db['Equipments']
 lost_eqpt = db["Lost_eqpt"]
 
 
-class User_db:
+class Userdb:
     def __init__(self) -> None:
         self.collection =  Users
 
@@ -17,20 +18,29 @@ class User_db:
         return self.collection.insert_one(usr.__dict__)
         
         
-    def get_user_by_id(self, user_id):
-        return self.collection.find_one({"_id":user_id})
+    def get_user_by_role(self, role):
+        return self.collection.find({"role": role})
     
-    def update_user_profile(self,**kwargs):
-        return self.collection.update_one({"_id":kwargs["requested_id"]},{"$set":kwargs.__dict__}).modified_count>0
+    def get_user_by_uid(self, user_uid):
+        return self.collection.find_one({"uid": user_uid})
     
-    def delete_user(self, _id):
-        return self.collection.delete_one({"_id":_id}).deleted_count>0
+    def update_user_profile(self, user_id, dtls):
+        return self.collection.update_one({"uid":user_id},{"$set":dtls.__dict__}).modified_count>0
+    
+    def delete_user(self, uid):
+        return self.collection.delete_one({"uid":uid}).deleted_count>0
     
     def get_all_users(self):
         return self.collection.find()
     
+    def get_all_users_limited(self):
+        return self.collection.find().limit(4)
+    
     def get_users_by_stack(self, stack):
-        return self.collection.find_one({"stack":stack})
+        return self.collection.find({"stack":stack})
+    
+    def get_users_by_stack_limited(self, stack):
+        return self.collection.find({"stack":stack}).limit(4)
     
     
 class Task_db:
@@ -110,11 +120,12 @@ class generate:
         
     
 class User:
-    def __init__(self, firstname, surname, pwd, _id, stack, niche, role, phone_num, email, mentor_id, avatar, task_id, bio, location, bday, datetime_created) -> None:
+    def __init__(self, firstname, surname, fullname, hashed_pwd, uid, stack, niche, role, phone_num, email, mentor_id, avatar, task_id, bio, location, bday, datetime_created) -> None:
         self.firstname = firstname
         self.surname = surname
-        self. pwd = pwd
-        self._id = _id
+        self.fullname = fullname
+        self. hashed_pwd = hashed_pwd
+        self.uid = uid
         self.stack = stack
         self.niche = niche
         self.role = role
@@ -127,14 +138,45 @@ class User:
         self.bio = bio
         self.location = location
         self.bday = bday
-
+        
+class updateUser:
+    def __init__(self, filename, phone_num, email, bio, location, bday) -> None:
+        self.avatar = filename
+        self.phone_num = phone_num
+        self.email = email
+        self.bio = bio
+        self.location = location
+        self.bday = bday
+        
+class updateAdmin:
+    def __init__(self, firstname, surname, fullname, uid, stack, niche, role, filename, phone_num, email, bio, location, bday) -> None:
+        self.firstname = firstname
+        self.surname = surname
+        self.fullname = fullname
+        self.uid = uid
+        self.stack = stack
+        self.niche = niche
+        self.role = role
+        self.phone_num = phone_num
+        self.email = email
+        self.avatar = filename 
+        self.bio = bio
+        self.location = location
+        self.bday = bday
+        
+class updateEmail:
+    def __init__(self, new_email) -> None:
+        self.email = new_email
+        
+class updatePwd:
+    def __init__(self, hashed_pwd) -> None:
+        self.hashed_pwd = hashed_pwd
 
 
 def user_view_permission(user_role, current_user_id, requested_id, stack):
-    if user_role =="Admin" or current_user_id==requested_id or User_db.get_user_by_id(requested_id)["mentor_id"]==current_user_id or (user_role=="lead" and stack==User_db.get_user_by_id(requested_id)["stack"]):
+    if user_role =="Admin" or current_user_id==requested_id or Userdb.get_user_by_id(requested_id)["mentor_id"]==current_user_id or (user_role=="lead" and stack==User_db.get_user_by_uid(requested_id)["stack"]):
         return True
     else:
         return False
     
         
-    
