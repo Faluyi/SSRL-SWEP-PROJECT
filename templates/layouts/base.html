@@ -20,33 +20,22 @@
    
     <style>
       
-      
       .sidebar {
         height: 100%;
         width: 250px;
         position: fixed;
         z-index: 1;
-        top: 10%%;
         left: 0;
-        background-color: rgb(245,246,247);
+        top: 5%;
+        background: #6A8C70;
         overflow-x: hidden;
         transition: 0.3s;
-        padding-top: 60px;
+        padding-top: 30px;
+        padding-left: 5px;
+        padding-right: 5px;
         
       }
       
-      .sidebar a {
-        padding: 8px 8px 8px 32px;
-        text-decoration: none;
-        font-size: 25px;
-        color: #818181;
-        display: block;
-        transition: 0.3s;
-      }
-      
-      .sidebar a:hover {
-        color: #f1f1f1;
-      }
       
       .sidebar .closebtn {
         position: absolute;
@@ -62,7 +51,8 @@
         font-size: 20px;
         cursor: pointer;
         background-color: none;
-        color: grey;
+        color:  #3F3E41;
+        background: #9BB2A0;
         padding: 10px 15px;
         border: none;
 
@@ -71,8 +61,8 @@
       .openbtn {
         font-size: 20px;
         cursor: pointer;
-        background-color: none;
-        color: rgb(248,249,250);
+        background-color: #9BB2A0;
+        color: #3F3E41;
         padding: 10px 15px;
         border: none;
 
@@ -81,7 +71,7 @@
 
 
       .openbtn:hover {
-        background-color: white;
+        background-color:;
         
       }
 
@@ -89,9 +79,8 @@
       #myx{
         font-size: 20px;
         cursor: pointer;
-        background-color: none;
-        color: grey;
-        padding: 10px 15px;
+        color:  #3F3E41;
+        background: #9BB2A0;
         border: none;
         display:block;
 
@@ -101,9 +90,8 @@
       #mylist {
         font-size: 20px;
         cursor: pointer;
-        background-color: none;
-        color: grey;
-        padding: 10px 15px;
+        color:  #3F3E41;
+        background: #9BB2A0;
         border: none;
         display:none;
 
@@ -111,7 +99,7 @@
       
       #main {
         transition: margin-left: .3s;
-        margin-left: 250px
+        margin-left: 250px;
         padding: 16px;
       }
       
@@ -122,44 +110,44 @@
       }
       </style>
       </head>
-      <body>
-        <nav class="navbar navbar-expand-sm navbar-dark bg-light fixed-top">
+      <body style="background:#CDD9CF">
+        <nav class="navbar navbar-expand-sm navbar-dark fixed-top" style="background-color: #9BB2A0;">
           <div class="container-fluid">
             <div id="mylist"><button class="openbtn" onclick="openNav()"><i class="bi bi-list"></i></button></div> 
-        <div id="myx"><a href="javascript:void(0)" class="closebtn" onclick="closeNav()"><i class="bi bi-x-lg" ></i></a> </div>
+        <div id="myx"><button class="closebtn" onclick="closeNav()"><i class="bi bi-x-lg" ></i></button> </div>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mynavbar">
               <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="mynavbar">
               <ul class="navbar-nav me-auto">
                 <li class="nav-item">
-                  <a class="nav-link " href="javascript:void(0)">Link</a>
+                  <a class="nav-link " href="/home/me">Home</a>
                 </li>
+                {% if user_profile.role=="Admin" or user_profile.role=="Lead" %}
                 <li class="nav-item">
-                  <a class="nav-link" href="javascript:void(0)">Link</a>
+                  <a class="nav-link" href="/view/members">{% if user_profile.role=="Admin" %}Personnels{% else %}Interns{% endif %}</a>
                 </li>
+                {% endif %}
+                {% if user_profile.role=="Admin" or (user_profile.role=="Lead" and user_profile.stack =="Hardware") %}
                 <li class="nav-item">
-                  <a class="nav-link" href="javascript:void(0)">Link</a>
+                  <a class="nav-link" href="/view/equipments">Equipments</a>
+                </li>
+                {% endif %}
+                <li class="nav-item">
+                  <a class="nav-link" href="/all/submissions">Submissions</a>
+                </li>
+
+                <li class="nav-item">
+                  <a class="nav-link" href="/view/profile/me">Settings</a>
                 </li>
               </ul>
-              <form class="d-flex">
-                <input class="form-control me-2" type="text" placeholder="Search">
-                <button class="btn btn-primary" type="button">Search</button>
-              </form>
+              
             </div>
           </div>
         </nav>
       
       <div id="mySidebar" class="sidebar">
-        <div class="navbar-brand">
-          <a data-bs-toggle="modal" data-bs-target="#myModal">
-            <img src="/static/images/avatar.jpg" alt="Avatar Logo" style="width:150px; height:150px; margin:auto;" class="rounded-pill"> 
-          </a> 
-          
-        </div>
-       
-       
-        <div class="bg-light">
+        <div class="d-flex flex-column align-items-center justify-content-center">
           <img src="/static/images/{{user_profile.avatar}}" alt="avatar" class="rounded shadow mb-3" style="width:200px; height:200px;">
           <div class="text-center">
             <h5 class="mb-3"><strong>{{user_profile.fullname}}</strong></h5>
@@ -168,58 +156,46 @@
             <h6><strong>Niche:</strong> {{user_profile.niche}}</h6>
             <h6><strong>Role:</strong> {{user_profile.role}}<h6>
           </div>
-          <div class="">
+        </div>
+          <div class="mt-3">
             <h6><strong>BIO</strong></h6>
             <p>{{user_profile.bio}}</p>
           </div>
-        </div>
 
-        <div class="dropdown">
+        <div class="dropdown" style="top:90%; position:absolute;">
           <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" id="dropdownUser1" data-bs-toggle="dropdown" aria-expanded="false">
             <img src="/static/images/{{user_profile.avatar}}" alt="avatar" width="40" height="40" class="rounded-circle me-2">
             <strong class="text-dark">FI</strong>
           </a>
         
-          <ul class="dropdown-menu dropdown-menu-grey text-small shadow" aria-labelledby="dropdownUser1">
+          <ul class="dropdown-menu dropdown-menu-grey text-small shadow" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);" aria-labelledby="dropdownUser1">
             <li><a class="dropdown-item" href="/view/profile/me">Profile</a></li>
-            <li><a class="dropdown-item" href="#">Request form</a></li>
-            <li><a class="dropdown-item" href="#">Settings</a></li>
+            {%if user_profile.role !="Admin" %}<li><a class="dropdown-item" href="/submissions/forms/request">Request form</a></li>{%endif%}
+            <li><a class="dropdown-item" href="/view/profile/me">Settings</a></li>
             <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item" <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#sign_out">
               Log out
             </button></a></li>
           </ul>
         </div>
+      </div>
     </div>
       
-      <div id="main">
+      <div id="main" style="margin-top:60px; background-color: #CDD9CF;      ">
         <div>
           {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
               {% for category, message in messages %}
                 {%if category %}
-                 
-                {%if category=="created"%}
-                  <div class="alert alert-success alert-dismissible fade show">
-                    {{ message}} <button type="button" class="btn border-0" id="toastbtn">Copy log in credentials</button>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                  </div>
-                  <div class="toast">
-                    <div class="toast-header">
-                      <strong class="me-auto">{{fullname}}</strong>
-                      <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
-                    </div>
-                    <div class="toast-body">
-                      <p>User ID: <strong>{{uid}}</strong></p>
-                      <p>Default password: <strong>{{pwd}}</strong></p>
-                    </div>
-                  </div>
+                <div class="alert alert-{{category}} alert-dismissible fade show text-center" style="margin-top:20px">
+                  {{message}}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
                   {%else%}
-                  <div class="alert alert-info alert-dismissible fade show">
+                  <div class="alert alert-info alert-dismissible fade show text-center" style="margin-top:20px">
                     {{message}}
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                   </div>
-                  {%endif%}
                     
                 {% endif %}
               {% endfor %}
@@ -227,15 +203,45 @@
           {% endwith %}
         </div>
           
-
         
-        {% block content %} {% endblock content %} 
+        {% block content %} 
+        
+        {% endblock content %} 
+
       </div>
+
+      
+ <!-- The Modal -->
+<div class="modal" id="sign_out">
+  <div class="modal-dialog">
+    <div class="modal-content" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+
+      <!-- Modal Header -->
+      <div class="modal-header" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+        <h4 class="modal-title">Log out</h4>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <!-- Modal body -->
+      <div class="modal-body">
+        Are you sure you want to log out?
+      </div>
+
+      <!-- Modal footer -->
+      <div class="modal-footer">
+        <a href="/logout"><button type="button" class="btn btn-danger" data-bs-dismiss="modal">Yes</button></a>
+      </div>
+
+    </div>
+  </div>
+</div>
       
       <script>
       function openNav() {
         document.getElementById("mySidebar").style.width = "250px";
         document.getElementById("main").style.marginLeft = "250px";
+        document.getElementById("mySidebar").style.paddingLeft = "5px";
+        document.getElementById("mySidebar").style.paddingRight = "5px";
         document.getElementById("myx").style.display = "block";
         document.getElementById("mylist").style.display = "none";
 
@@ -243,6 +249,8 @@
       
       function closeNav() {
         document.getElementById("mySidebar").style.width = "0";
+        document.getElementById("mySidebar").style.paddingLeft = "0";
+        document.getElementById("mySidebar").style.paddingRight = "0";
         document.getElementById("main").style.marginLeft= "0";
         document.getElementById("mylist").style.display = "block";
         document.getElementById("myx").style.display = "none";

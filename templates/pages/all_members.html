@@ -1,42 +1,32 @@
 {% extends 'layouts/base.html' %}
 
 {% block content %}
+<style>
+  .scrollable-menu {
+    height: auto;
+    max-height: 200px;
+    overflow-x: hidden;
+}
+
+</style>
     {% if user_profile.role != "Admin"%}
-    <div class=" container d-flex flex-wrap p-3 mb-3" >
-      <div class="card mt-4" style="width:100vh;height:100vh; margin:auto;">
+    <div class=" container d-flex flex-wrap flex-column p-3 mb-3" >
+      <div class="card mt-4" style="min-height:100vh;background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
         
-      <div class="card-header">
-        <div class="row">
-          <div class="col">
-          Stack Members
-          </div>
-          <div class="col text-end">
-            <div class="dropdown">
-              <button type="button" class="border-0" data-bs-toggle="dropdown"><i class="bi bi-three-dots-vertical"></i></button>
-                
-                <ul class="dropdown-menu">
-                  <li><a class="dropdown-item" href="#">View all</a></li>
-                  <li><a class="dropdown-item" href="#">Link 2</a></li>
-                  <li><a class="dropdown-item" href="#">Link 3</a></li>
-                </ul>
-          
-            </div>
-          </div>
-        </div>
+      <div class="card-header" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+          <h5 class="card-title">Stack Members</h5>
       </div>
 
-        <div class="card-body  p-5">
+        <div class="card-body container p-5">
           <div class="d-flex flex-wrap">
             {%if members%}
               {%for member in members%}
-                <div class="d-flex align-items-center" style="margin:auto;">
-                  <form action= method="post">
-                  <a href="#" button type="submit"><img src="/static/images/{{member.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></button></a>
+                <div class="d-flex align-items-center me-3 mb-3"> 
+                  <a href="/show/profile/{{member._id}}" ><img src="/static/images/{{member.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></a>
                   <div class="text-center">
                     <h6>{{member.firstname}}</h6>
                     <h6>{{member.niche}}</h6>
                   </div>
-                </form>
                 </div>
               {%endfor%}
 
@@ -79,49 +69,46 @@
             </li>
         </ul>
     
-          <div class="tab-content">
+          <div class="tab-content" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
     
             <div  class="tab-pane active" id="software"> 
-              <div class="container card" style="height:100vh;"> 
+              <div class="container card"style="min-height:100vh;background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);" > 
                 <div class="card-body mt-4">
                     
                     <div class="row">
                       <div class="col">
-                        <h4 class="card-title">Leads</h4>
+                        <h5 class="card-title">Leads</h5>
                       </div>
                       <div class="col text-end">
                         <div class="dropdown">
                           <button type="button" class="border-0" data-bs-toggle="dropdown"><i class="bi bi-person-plus"></i></button>
                             
-                            <ul class="dropdown-menu p-2" style="width:50px;">
-                              {%for intern in interns%}
-                              {%if intern.stack=="Software"%}
+                            <ul class="dropdown-menu dropdown-menu-start scrollable-menu p-2" style="width:50px;background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+                              {%for intern in softinterns%}
                               <div class="d-flex flex-row">
-                                  <li><img src="/static/images/{{intern.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:30px;height:30px;"></a>
+                                  <li><a href="/Add/lead/{{intern.uid}}"><img src="/static/images/{{intern.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:30px;height:30px;"></a>
                                   
                                     <p>{{intern.fullname}}</p>
                                   </li>
                                 </div>
                               
-                              {%endif%}
                               {%endfor%}
                             </ul>
                       
                         </div>
                       </div>
+                      
                     </div>
                     <div class="d-flex flex-wrap mt-4 mb-4">
-                      {% if leads%}
-                        {%for lead in leads%}
-                          {%if lead.stack=="Software" %}
+                      {% if softlead %}
+                        {%for lead in softlead%}
                             <div class="d-flex align-items-center me-5 mb-3 ">
-                              <a href=""><img src="/static/images/{{lead.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></a>
+                              <a href="/show/profile/{{lead._id}}"><img src="/static/images/{{lead.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></a>
                               <div class="text-center">
                                 <h6>{{lead.firstname}}</h6>
                                 <h6>{{lead.niche}}</h6>
                               </div>
                             </div>
-                          {%endif%}
                           
                         {%endfor%}
                       {%else%}
@@ -131,20 +118,18 @@
                       {%endif%}
                     </div>
                       
-                    <h4 class="card-title">Interns</h4>
+                    <h5 class="card-title">Interns</h5>
                     <div class="d-flex flex-wrap mt-4 mb-4">
-                      {%if interns %}
+                      {%if softinterns %}
                       
-                        {%for intern in interns%}
-                          {%if intern.stack=="Hardware"%}
-                          <div class="d-flex align-items-center" style="margin:auto;">
-                              <a href=""><img src="/static/images/{{intern.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></a>
+                        {%for intern in softinterns%}
+                          <div class="d-flex align-items-center mb-3 me-3" >
+                              <a href="/show/profile/{{intern._id}}"><img src="/static/images/{{intern.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></a>
                               <div class="text-center">
                                 <h6>{{intern.firstname}}</h6>
                                 <h6>{{intern.niche}}</h6>
                               </div>
                             </div>
-                          {%endif%}
                         {%endfor%}
                       {%else%}
                           <div class="d-flex align-items-center"style="margin:auto;">
@@ -174,49 +159,63 @@
     
             </div>
 
-            <div  class="tab-pane container fade" id="hardware">  
-                    <div class="container card" style="height:100vh;"> 
+            <div  class="tab-pane container fade" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);" id="hardware">  
+                    <div class="container card" style="min-height:100vh;background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);"> 
                 <div class="card-body mt-4">
                   <div class="row">
                     <div class="col">
-                      <h4 class="card-title">Leads</h4>
+                      <h5 class="card-title">Leads</h5>
                     </div>
                     <div class="col text-end">
                       <div class="dropdown">
                         <button type="button" class="border-0" data-bs-toggle="dropdown"><i class="bi bi-person-plus"></i></button>
                           
-                          <ul class="dropdown-menu p-2" style="width:50px;">
-                            {%for intern in interns%}
-                            {%if intern.stack=="Hardware"%}
+                          <ul class="dropdown-menu scrollable-menu p-2" style="width:50px; background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+                            {%for intern in hardinterns%}
                             <div class="d-flex flex-row">
-                                <li><img src="/static/images/{{intern.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:30px;height:30px;"></a>
+                                <li><a href="/Add/lead/{{intern.uid}}"><img src="/static/images/{{intern.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:30px;height:30px;"></a>
                                 
                                   <p>{{intern.fullname}}</p>
                                 </li>
                               </div>
                             
-                            {%endif%}
                             {%endfor%}
                           </ul>
                     
                       </div>
                     </div>
                   </div>
+
+                  <div class="d-flex flex-wrap mt-4 mb-4">
+                    {% if hardlead%}
+                      {%for lead in hardlead%}
+                          <div class="d-flex align-items-center me-5 mb-3 ">
+                            <a href="/show/profile/{{lead._id}}"><img src="/static/images/{{lead.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></a>
+                            <div class="text-center">
+                              <h6>{{lead.firstname}}</h6>
+                              <h6>{{lead.niche}}</h6>
+                            </div>
+                          </div>
+                      {%endfor%}
+                    {%else%}
+                    <div class="d-flex align-items-center me-5 mb-3">
+                      <a href=""><img src="/static/images/person.svg" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></a>
+                    </div>
+                    {%endif%}
+                  </div>
                       
-                    <h4 class="card-title">Interns</h4>
+                    <h5 class="card-title">Interns</h5>
                     <div class="d-flex flex-wrap mt-4 mb-4">
-                      {%if interns %}
+                      {%if hardinterns %}
                       
-                        {%for intern in interns%}
-                          {%if intern.stack=="Hardware"%}
-                          <div class="d-flex align-items-center" style="margin:auto;">
-                              <a href=""><img src="/static/images/{{intern.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></a>
+                        {%for intern in hardinterns%}
+                          <div class="d-flex align-items-center mb-3 me-3">
+                              <a href="/show/profile/{{intern._id}}"><img src="/static/images/{{intern.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></a>
                               <div class="text-center">
                                 <h6>{{intern.firstname}}</h6>
                                 <h6>{{intern.niche}}</h6>
                               </div>
                             </div>
-                          {%endif%}
                         {%endfor%}
                       {%else%}
                           <div class="d-flex align-items-center" style="margin:auto;">

@@ -1,0 +1,179 @@
+{% extends 'layouts/base.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="card mt-5 mb-3 " style="min-height:100vh;background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1); ">
+        <div class="card-header" style="border-color: rgba(106, 140, 112, 1);">
+            <h5 class="card-title"> Request details</h5>
+        </div>
+        <div class="card-body">
+          {% if user_profile.role !="Admin" and request.status=="Approved" %}
+            <div class="dropdown text-end">
+                <button type="button" class="border-0" data-bs-toggle="dropdown"><i class="bi bi-three-dots-vertical"></i></button>
+                  
+                  <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href=""<button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#deleteEqpt">Delete request</button></a></li>
+                    <li><a class="dropdown-item" href="#">Link 3</a></li>
+                  </ul>
+            
+              </div>
+            {%endif%}
+            {% if user_profile.role=="Admin"%}
+            <div class="dropdown text-end">
+              <button type="button" class="btn" data-bs-toggle="dropdown"><i class="bi bi-three-dots-vertical me-2"></i>Action</button>
+                
+                <ul class="dropdown-menu">
+                  <li><a class="dropdown-item" href=""<button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#approve">Approve</button></a></li>
+                  <li><a class="dropdown-item" href=""<button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#decline">Decline</button></a></li>
+                </ul>
+          
+            </div>
+          {%endif%}
+            <div class="row mb-3 text-center">
+                <div class="col" >
+                  <h6 class="card-title">{{request.title}}</h6>
+                </div>
+              </div>
+              
+              <div class="row mb-3 mt-3">
+                <div class="col" >
+                  <h6 class="card-title" >Type</h6>
+                  <input type="text" class="form-control" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);"  value="{{request.type}}" readonly>
+                </div>
+              </div>
+
+
+              <div class="row mb-3 mt-3">
+                <div class="col">
+                  <h6 class="card-title">Duration:</h6>
+                </div>
+              </div>
+              <div class="row mb-3 mt-3">
+                <div class="col">
+                  <i class="me-2">From</i><input type="text" class="form-control " style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);" value="{{request.date_from}}" readonly>
+                </div>
+                <div class="col">
+                    <i class="me-2">To</i><input type="text" class="form-control"style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);" value="{{request.date_to}}" readonly>
+                </div>
+              </div>     
+              
+              <div class="row mb-3 mt-3">
+                  <div class="col">
+                    <h6 class="card-title">Purpose</h6>
+                    <textarea type="textarea " rows="5" class="form-control" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);" readonly>{{request.purpose}}</textarea>
+                  </div>
+              </div>
+
+                <div class="row mb-3 mt-3">
+                  <div class="col">
+                    <h6 class="card-title">Submitted to</h6>
+                    <input type="text" class="form-control " style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);" value="{{request.recipient["position"]}}" readonly>
+                  </div>
+                </div>
+
+              <div class="row mb-3 mt-3">
+                <div class="col">
+                  <h6 class="card-title">Date submitted</h6>
+                  <input type="text" class="form-control " style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);"  value="{{request.date_submitted}}" readonly>
+                </div>
+              </div>
+
+            <div class="row mb-3 mt-3">
+              <div class="col">
+                <h6 class="card-title">Status</h6>
+                <input type="text" class="form-control" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);" value="{{request.status}}" readonly>
+              </div>
+            </div>
+
+                
+      </div>
+    </div>
+  </div>   
+
+<!-- The Modal -->
+<div class="modal" id="deleteEqpt">
+    <div class="modal-dialog">
+      <div class="modal-content" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+  
+        <!-- Modal Header -->
+        <div class="modal-header" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+          <h4 class="modal-title">Delete request</h4>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+  
+        <!-- Modal body -->
+        <div class="modal-body">
+          Are you sure you want to delete this request?
+        </div>
+  
+        <!-- Modal footer -->
+        <div class="modal-footer">
+          <a href="/delete/request/{{request._id}}"><button type="button" class="btn btn-danger" data-bs-dismiss="modal">Yes</button></a>
+        </div>
+  
+      </div>
+    </div>
+  </div>
+
+  
+<!-- The Modal -->
+<div class="modal" id="approve">
+  <div class="modal-dialog">
+    <div class="modal-content" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+
+      <!-- Modal Header -->
+      <div class="modal-header" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+        <h4 class="modal-title">Approve request</h4>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <!-- Modal body -->
+      <div class="modal-body">
+        Are you sure you want to approve this request?
+      </div>
+
+      <!-- Modal footer -->
+      <div class="modal-footer">
+        <a href="/approve/request/{{request._id}}"><button type="button" class="btn btn-danger" data-bs-dismiss="modal">Yes</button></a>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- The Modal -->
+<div class="modal" id="decline">
+  <div class="modal-dialog">
+    <div class="modal-content" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+
+      <!-- Modal Header -->
+      <div class="modal-header" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+        <h4 class="modal-title">Approve request</h4>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <!-- Modal body -->
+      <div class="modal-body">
+        Are you sure you want to approve this request?
+      </div>
+
+      <!-- Modal footer -->
+      <div class="modal-footer">
+        <a href="/approve/request/{{request._id}}"><button type="button" class="btn btn-danger" data-bs-dismiss="modal">Yes</button></a>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+{% endblock content %}
+
+
+
+
+

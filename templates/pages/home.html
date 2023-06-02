@@ -2,23 +2,24 @@
 
 {% block content %}
 <div class="d-flex flex-column justify-content-center container  mb-auto p-5"> 
-    <div class="text-center">
+    <div class="text-center" style="min-width: 350px;">
     <h6><strong>{{date.day}}, {{date.month}} {{date.date}}</strong></h6>
     <h2 style="color: rgb(75, 73, 73)">Good {{date.meridian}}, {{user_profile.firstname}}</h2>
     </div>
   <div class="d-flex flex-row">
-    <div class=" d-flex flex-row border-0 rounded-pill bg-light" style=" width:500px; min-height: 45px;padding-left:30px; padding-right:30px; padding-top:8px; padding-bottom:8px; margin: auto;">
-      <select class="form-select form-select-sm border-0 bg-light" aria-label=".form-select-sm example" style="width: 110px">
+    <div class=" d-flex flex-row border-0 rounded-pill" style=" width:500px; min-height: 45px;padding-left:30px; padding-right:30px; padding-top:8px; padding-bottom:8px; margin: auto; background-color: rgba(155, 178, 160, 0.31);">
+      <select class="form-select form-select-sm border-0 me-1" aria-label=".form-select-sm example" style="width: 110px; background-color: rgba(155, 178, 160, 0.31);      ">
         <option selected><p>My week</p></option>
         <option value="month"><p>My month</p></option>
         <option value="month"><p>My year</p></option>
-      </select><span class="me-5" style="height: 25px; width: .1rem; background-color:rgb(235, 225, 225);"></span>
+      </select>
+      <span class="me-5" style="min-height: 25px; width: .1rem; background: rgba(0, 0, 0, 0.32);"></span>
       <div><i class="bi bi-check2 me-2"></i><strong>0</strong> Tasks Completed</div>
       
   </div>
 {%if user_profile.role != "Admin"%}
   <div class="text-end">
-  <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#attendance"><i class="bi bi-check2-square"></i>
+  <button type="button" class="btn btn-sm border-0" data-bs-toggle="modal" data-bs-target="#attendance" style="background: rgba(155, 178, 160, 1);  "><i class="bi bi-check2-square"></i>
   Mark attendance
   </button>
 </div>
@@ -26,7 +27,7 @@
 
 {%if user_profile.role == "Admin"%}
   <div class="text-end">
-  <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#register"><i class="bi bi-check2-square"></i>
+  <button type="button" class="btn btn-sm btn-primary border-0" data-bs-toggle="modal" data-bs-target="#register" style="background: rgba(155, 178, 160, 1);" ><i class="bi bi-check2-square"></i>
   Register Interns
   </button>
 </div>
@@ -37,9 +38,9 @@
 
 {%if user_profile.role != "Admin"%}
 <div class="row mt-3">
-  <div class="col-lg-6 col-md-6 col-sm-12">
-    <div class="card" style="height: 300px;">
-      <div class="card-header">To-do List</div>
+  <div class="col mb-3">
+    <div class="card" style="height: 300px; min-width:400px; background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);"> 
+      <div class="card-header" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">To-do List</div>
       <div class="card-body">
         <ul class="nav nav-tabs">
         <li class="nav-item">
@@ -63,9 +64,9 @@
       </div>
     </div>
   </div>
-  <div class="col-lg-6 col-md-6 col-sm-12">
-    <div class="card" style="height: 300px">
-      <div class="card-header">Projects</div>
+  <div class="col">
+    <div class="card" style="height: 300px ;min-width:400px; background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+      <div class="card-header" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">Projects</div>
       <div class="card-body">
         isaiah
       </div>
@@ -73,9 +74,9 @@
   </div>
 </div>
 <div class="row mt-3">
-<div class="col-lg-6 col-md-6 col-sm-12">
-  <div class="card" style="height: 350px">
-    <div class="card-header">Reports/Requests</div>
+<div class="col mb-3">
+  <div class="card" style="height: 350px; min-width:400px; background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+    <div class="card-header" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">Reports/Requests</div>
     <div class="card-body">
       <ul class="nav nav-tabs">
         <li class="nav-item">
@@ -96,8 +97,8 @@
   </div>
 </div>
 <div class="col">
-  <div class="card" style="height: 350px">
-    <div class="card-header">Availability/Attendance</div>
+  <div class="card" style="height: 350px; min-width:400px; background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+    <div class="card-header" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">Availability/Attendance</div>
     <div class="card-body">
       isaiah
     </div>
@@ -109,11 +110,11 @@
 
 
 {% if user_profile.role=="Admin"%}
-<div class="card mt-4" style="min-height: 350px;">
-<div class="card-header">Submissions</div>
+<div class="card mt-4" style="min-height: 400px; min-width: 350px; background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+<div class="card-header" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">Submissions</div>
 <div class="card-body">
-  <ul class="nav nav-tabs nav-justified">
-    <li class="nav-item">
+  <ul class="nav nav-tabs nav-justified" >
+    <li class="nav-item" >
       <a class="nav-link active" data-bs-toggle="tab" href="#reports">Reports</a>
     </li>
     <li class="nav-item">
@@ -137,9 +138,9 @@
 
 
 {% if user_profile.role=="Admin" or user_profile.role=="Lead"%}
-  <div class="card mt-4" style="min-height: 350px;">
+  <div class="card mt-4" style="min-height: 350px; min-width: 350px; background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1); ">
     {% if user_profile.role=="Admin"%}
-    <div class="card-header">
+    <div class="card-header" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
     <div class="row">
       <div class="col">
       Personnels
@@ -158,7 +159,7 @@
       </div>
     </div>
   </div>
-      {%else%}<div class="card-header">
+      {%else%}<div class="card-header" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
         <div class="row">
           <div class="col">
           Stack members
@@ -208,7 +209,7 @@
         {%else%}
           {%for member in members%}
           <div class="d-flex align-items-center mb-4" style="margin:auto;">
-            <img src="/static/images/{{member.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;">
+            <a href="/show/profile/{{member._id}}" ><img src="/static/images/{{member.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></a>
             <div class="text-center">
               <h6>{{member.firstname}}</h6>
               <h6>{{member.niche}}</h6>
@@ -230,24 +231,23 @@
 <!-- Modal -->
 <div class="modal fade" id="attendance" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
     <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
+      <div class="modal-content" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+        <div class="modal-header" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
           <h5 class="modal-title" id="exampleModalLabel">Mark Attendance</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
           <div class="form-check">
-            <input type="radio" class="form-check-input" id="sign_in" name="sign_in" value="in">Sign in
+            <input type="radio" class="form-check-input" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);" id="sign_in" name="sign_in" value="in">Sign in
             <label class="form-check-label" for="radio1"></label>
           </div>
           <div class="form-check">
-            <input type="radio" class="form-check-input" id="ra" name="sign_out" value="out">Sign out
+            <input type="radio" class="form-check-input"  style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);"id="ra" name="sign_out" value="out">Sign out
             <label class="form-check-label" for="radio2"></label>
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-          <button type="button" class="btn btn-primary">Save changes</button>
+        <div class="modal-footer" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+          <button type="button" class="btn" style="background: linear-gradient(267.33deg, #386641 5.13%, #9BB2A0 94.79%);">Save changes</button>
         </div>
       </div>
     </div>
@@ -257,10 +257,10 @@
 <!-- The Modal -->
 <div class="modal fade" tabindex="-1" id="register">
   <div class="modal-dialog modal-dialog-scrollable">
-    <div class="modal-content d-flex " style="max-width:600px;">
+    <div class="modal-content d-flex " style="max-width:600px;background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
       <form action="/Admin/create/user" method="post">
       <!-- Modal Header -->
-      <div class="modal-header d-flex flex-direction-center">
+      <div class="modal-header d-flex flex-direction-center" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
         <h4 class="modal-title">Register Intern</h4>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
@@ -269,20 +269,27 @@
       <div class="modal-body">
        
           <div class="row mb-3 mt-3">
-            <div class="col">
+            <div class="col" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
               <h6 class="modal-title">Firstname</h6>
-              <input type="text" class="form-control" placeholder="First name" name="firstname" required>
+              <input type="text" class="form-control" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);" placeholder="First name" name="firstname" required>
             </div>
-            <div class="col">
+            <div class="col" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
               <h6 class="modal-title">Surname</h6>
-              <input type="text" class="form-control" placeholder="Surname" name="surname"  required>
+              <input type="text" class="form-control" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);" placeholder="Surname" name="surname"  required>
+            </div>
+          </div>
+
+          <div class="row mb-3 mt-3">
+            <div class="col" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+              <h6 class="modal-title">Email</h6>
+              <input type="email" class="form-control" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);" placeholder="Enter your email address" name="email" required>
             </div>
           </div>
           
           <div class="row mb-3 mt-3">
-            <div class="col">
+            <div class="col" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
               <h6 class="modal-title">Role</h6>
-              <select class="form-select mt-3" name="role" required>
+              <select class="form-select" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);" name="role" required>
                 <option value="Intern" >Intern</option>
                 <option value="Mentor">Mentor</option>
                 <option value="Lead" >Lead</option>
@@ -292,18 +299,18 @@
           </div> 
 
           <div class="row mb-3 mt-3">
-            <div class="col">
-              <h6 class="modal-title">Stack</h6>
-               <select class="form-select mt-3" name="stack"  required>
+            <div class="col"style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+              <h6 class="modal-title" >Stack</h6>
+               <select class="form-select" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);" name="stack"  required>
                 <option value="Software" >Software</option>
                 <option value="Hardware">Hardware</option>
               </select>
             </div>
           </div>
         <div class="row mb-3 mt-3">
-            <div class="col">
+            <div class="col" >
               <h6 class="modal-title">Niche</h6>
-              <select class="form-select mt-3" name="niche"  required>
+              <select class="form-select" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);" name="niche"  required>
                 <option value="Web development" >Web development</option>
                 <option value="App development">App development</option>
                 <option value="Embedded systems">Embedded systems</option>
@@ -314,8 +321,8 @@
       </div>
 
       <!-- Modal footer -->
-      <div class="modal-footer">
-        <button type="submit" class="btn btn-primary">Register</button>
+      <div class="modal-footer" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+        <button type="submit" class="btn" style="background: linear-gradient(267.33deg, #386641 5.13%, #9BB2A0 94.79%);">Register</button>
       </div>
       </form>
     </div>
