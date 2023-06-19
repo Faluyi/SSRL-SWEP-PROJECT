@@ -4,8 +4,10 @@
 <style>
   .scrollable-menu {
     height: auto;
+    width: auto;
+    max-width: 200px;
     max-height: 200px;
-    overflow-x: hidden;
+    overflow-x:hidden;
 }
 
 </style>
@@ -81,14 +83,13 @@
                       </div>
                       <div class="col text-end">
                         <div class="dropdown">
-                          <button type="button" class="border-0" data-bs-toggle="dropdown"><i class="bi bi-person-plus"></i></button>
+                          <button type="button" class="btn" data-bs-toggle="dropdown" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1)"><i class="bi bi-person-plus"></i></button>
                             
-                            <ul class="dropdown-menu dropdown-menu-start scrollable-menu p-2" style="width:50px;background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+                            <ul class="dropdown-menu dropdown-menu-start scrollable-menu " style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
                               {%for intern in softinterns%}
                               <div class="d-flex flex-row">
-                                  <li><a href="/Add/lead/{{intern.uid}}"><img src="/static/images/{{intern.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:30px;height:30px;"></a>
+                                  <li><a  class="dropdown-item" href="/Add/lead/{{intern.uid}}"><img src="/static/images/{{intern.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:30px;height:30px;">{{intern.fullname}}</a>
                                   
-                                    <p>{{intern.fullname}}</p>
                                   </li>
                                 </div>
                               
@@ -168,14 +169,13 @@
                     </div>
                     <div class="col text-end">
                       <div class="dropdown">
-                        <button type="button" class="border-0" data-bs-toggle="dropdown"><i class="bi bi-person-plus"></i></button>
+                        <button type="button" class="btn" data-bs-toggle="dropdown" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1)" ><i class="bi bi-person-plus"></i></button>
                           
-                          <ul class="dropdown-menu scrollable-menu p-2" style="width:50px; background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+                          <ul class="dropdown-menu scrollable-menu" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
                             {%for intern in hardinterns%}
                             <div class="d-flex flex-row">
-                                <li><a href="/Add/lead/{{intern.uid}}"><img src="/static/images/{{intern.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:30px;height:30px;"></a>
+                                <li><a class="dropdown-item" href="/Add/lead/{{intern.uid}}"><img src="/static/images/{{intern.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:30px;height:30px;">{{intern.fullname}}</a>
                                 
-                                  <p>{{intern.fullname}}</p>
                                 </li>
                               </div>
                             

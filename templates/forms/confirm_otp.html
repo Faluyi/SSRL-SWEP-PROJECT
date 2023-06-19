@@ -21,7 +21,7 @@
             {% with messages = get_flashed_messages() %}
               {% if messages %}
                 {% for message in messages %}
-                  <div class="alert alert-danger alert-dismissible fade show">
+                  <div class="alert alert-info alert-dismissible fade show">
                     {{ message }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                   </div>
@@ -32,21 +32,18 @@
         <div class="container mt-5 p-5 "style="background: rgba(205, 217, 207, 1);" >
             <div class="card mb-5 mt-5" style="width:500px; margin:auto;background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
                 <div class="card-header" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
-                    Sign in
+                    Authenticate OTP
                 </div>
                 <div class="card-body">
-                    <form action="/user/authenticate", method="post">
+                    <form action="/confirm/otp", method="post">
                         <div class="mb-3 mt-3">
-                          <label for="user_id" class="form-label">ID:</label>
-                          <input type="text" class="form-control" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);" id="ID" placeholder="Enter unique ID" name="user_id" required>
+                            <p> Type in the OTP sent to your email address into the input field below and click on the submit buuton.</p>
+                          </div>
+                        <div class="mb-3 mt-3">
+                          <label for="otp" class="form-label">Enter OTP:</label>
+                          <input type="text" class="form-control" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);" id="otp" placeholder="Enter OTP" name="otp" required>
                         </div>
-                        <div class="mb-3">
-                          <label for="pwd" class="form-label">Password:</label>
-                          <input type="password" class="form-control" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);" id="pwd" placeholder="Enter password" name="pwd" required>
-                        </div>
-                        <div class="mb-3">
-                        <a href="/forgot/password" class="text-decoration-none">Forgot password?</a>
-                        </div>
+                        
                         <button type="submit" class="btn" style="background: linear-gradient(267.33deg, #386641 5.13%, #9BB2A0 94.79%);">Submit</button>
                       </form>
                 </div>

@@ -17,32 +17,33 @@
       <div><i class="bi bi-check2 me-2"></i><strong>0</strong> Tasks Completed</div>
       
   </div>
+</div>
 {%if user_profile.role != "Admin"%}
-  <div class="text-end">
-  <button type="button" class="btn btn-sm border-0" data-bs-toggle="modal" data-bs-target="#attendance" style="background: rgba(155, 178, 160, 1);  "><i class="bi bi-check2-square"></i>
+<div class="text-end mt-2">
+  <button type="button" class="btn btn-sm btn-primary border-0" data-bs-toggle="modal" data-bs-target="#attendance" style="background: rgba(155, 178, 160, 1);  "><i class="bi bi-check2-square"></i>
   Mark attendance
   </button>
 </div>
 {%endif%}
 
 {%if user_profile.role == "Admin"%}
-  <div class="text-end">
+  <div class="text-end mt-2">
   <button type="button" class="btn btn-sm btn-primary border-0" data-bs-toggle="modal" data-bs-target="#register" style="background: rgba(155, 178, 160, 1);" ><i class="bi bi-check2-square"></i>
   Register Interns
   </button>
 </div>
 {%endif%}
-</div>
+
 
 
 
 {%if user_profile.role != "Admin"%}
 <div class="row mt-3">
   <div class="col mb-3">
-    <div class="card" style="height: 300px; min-width:400px; background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);"> 
+    <div class="card" style="height: 330px; min-width:400px; background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);"> 
       <div class="card-header" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">To-do List</div>
       <div class="card-body">
-        <ul class="nav nav-tabs">
+        <ul class="nav nav-tabs" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
         <li class="nav-item">
           <a class="nav-link active" data-bs-toggle="tab" href="#upcoming">Upcoming</a>
         </li>
@@ -65,20 +66,39 @@
     </div>
   </div>
   <div class="col">
-    <div class="card" style="height: 300px ;min-width:400px; background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+    <div class="card" style="height: 330px ;min-width:400px; background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
       <div class="card-header" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">Projects</div>
       <div class="card-body">
-        isaiah
+        <table class="table table-hover table-responsive" style="border-color: rgba(106, 140, 112, 1);">
+          <tbody>
+              {%if projects%}
+              {% for item in projects %}
+              <tr class="clickable" onclick="window.location='/view/project/{{item._id}}'">
+                  <td>{{item.topic}}</td>
+                  <td><p style="font-size:smaller;">{{item.date_submitted}}</p></td>
+                  {% if user_profile.uid !=item.sender["uid"] %}<td><i>by {{item.sender["uid"]}}</i></td>{% endif %}
+              </tr>
+          
+              {% endfor %}
+              {%else%}
+              <tr>
+                  <td>Dummy project</td>
+                  <td><p style="font-size:smaller;">10 minutes ago</p></td>
+              </tr>
+              {%endif%} 
+          </tbody>
+      </table>
+      <a href="/all/submissions" class="text-decoration-none">show more</a>
       </div>
     </div>
   </div>
 </div>
 <div class="row mt-3">
 <div class="col mb-3">
-  <div class="card" style="height: 350px; min-width:400px; background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+  <div class="card" style="height: 330px; min-width:400px; background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
     <div class="card-header" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">Reports/Requests</div>
     <div class="card-body">
-      <ul class="nav nav-tabs">
+      <ul class="nav nav-tabs" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
         <li class="nav-item">
           <a class="nav-link active" data-bs-toggle="tab" href="#reports">Reports</a>
         </li>
@@ -89,18 +109,94 @@
       
       <!-- Tab panes -->
       <div class="tab-content">
-        <div class="tab-pane container active" id="reports">Isaiah</div>
-        <div class="tab-pane container fade" id="requests">Faluyi</div>
+        <div class="tab-pane container active" id="reports">
+          <table class="table table-hover table-responsive" style="border-color: rgba(106, 140, 112, 1);">
+            <tbody>
+                {%if reports%}
+                {% for item in reports %}
+                <tr class="clickable" onclick="window.location='/view/report/{{item._id}}'">
+                    <td>{{item.title}}</td>
+                    <td><p style="font-size:smaller;">{{item.date_submitted}}</p></td>
+                    {% if user_profile.uid != item.sender["uid"] %}<td><i>by {{item.sender["uid"]}}</i></td>{% endif %}
+                    {% if user_profile.uid == item.sender["uid"] %}<td><i>{{item.status}}</i></td>{% endif %}
+                </tr>
+            
+                {% endfor %}
+                {%else%}
+                <tr>
+                    <td>Dummy report</td>
+                    <td><p style="font-size:smaller;">10 minutes ago</p></td>
+                    <td><i>by dummy</i></td>
+                </tr>
+                {%endif%}
+            </tbody>
+        </table>
+        <a href="/all/submissions" class="text-decoration-none">show more</a>
+
+        </div>
+        <div class="tab-pane container fade" id="requests">
+          
+          <table class="table  table-hover table-responsive" style="border-color: rgba(106, 140, 112, 1);">
+              <tbody>
+                  {%if requests%}
+                  {% for item in requests %}
+                  <tr class="clickable" onclick="window.location='/view/request/{{item._id}}'">
+                      <td>{{item.type}}</td>
+                      <td><p style="font-size:smaller;">{{item.date_submitted}}</p></td>
+                      {% if user_profile.uid==item.sender["uid"] %}<td><i>{{item.status}}</i></td>
+                      {%else%}<td><i>by {{item.sender["uid"]}}</i></td>{% endif %}
+                  </tr>
+              
+                  {% endfor %}
+                  {%else%}
+                  <tr>
+                      <td>Dummy request</td>
+                      <td><p style="font-size:smaller;">10 minutes ago</p></td>
+                      <td><i>by dummy</i></td>
+                  </tr>
+                  {%endif%}
+              </tbody>
+          </table>
+          <a href="/all/submissions" class="text-decoration-none">show more</a>
+        </div>
       </div>
       
     </div>
   </div>
 </div>
 <div class="col">
-  <div class="card" style="height: 350px; min-width:400px; background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+  <div class="card" style="height: 330px; min-width:400px; background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
     <div class="card-header" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">Availability/Attendance</div>
     <div class="card-body">
-      isaiah
+      <table class="table table-bordered table-hover table-responsive" style="border-color: rgba(106, 140, 112, 1);">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Time in</th>
+            <th>Time out</th>
+        </tr>
+        </thead>
+        <tbody>
+          
+            {%if attendance%}
+            {% for item in attendance %}
+            <tr>
+                <td>{{item.date}}</td>
+                <td>{{item.time_in}}</td>
+                <td>{{item.time_in}}</td>
+            </tr>
+        
+            {% endfor %}
+            {%else%}
+            <tr>
+                <td>Dummy date</td>
+                <td><p style="font-size:smaller;">dummy time in</p></td>
+                <td><p style="font-size:smaller;">dummy time out</p></td>
+            </tr>
+            {%endif%}
+        </tbody>
+    </table>
+    <a href="/all/submissions" class="text-decoration-none">show more</a>
     </div>
   </div>
 </div>
@@ -127,9 +223,84 @@
   
   <!-- Tab panes -->
   <div class="tab-content">
-    <div class="tab-pane container active mt-3" id="reports">Isaiah</div>
-    <div class="tab-pane container fade mt-3" id="requests">Faluyi</div>
-    <div class="tab-pane container fade mt-3" id="projects">Faluyi</div>
+    <div class="tab-pane container active mt-3" id="reports">
+      <table class="table table-hover table-responsive" style="border-color: rgba(106, 140, 112, 1);">
+        <tbody>
+            {%if reports%}
+            {% for item in reports %}
+            <tr class="clickable" onclick="window.location='/view/report/{{item._id}}'">
+                <td>{{item.title}}</td>
+                <td><p style="font-size:smaller;">{{item.date_submitted}}</p></td>
+                {% if user_profile.uid != item.sender["uid"] %}<td><i>by {{item.sender["uid"]}}</i></td>{% endif %}
+                {% if user_profile.uid == item.sender["uid"] %}<td><i>{{item.status}}</i></td>{% endif %}
+            </tr>
+        
+            {% endfor %}
+            {%else%}
+            <tr>
+                <td>Dummy report</td>
+                <td><p style="font-size:smaller;">10 minutes ago</p></td>
+                <td><i>by dummy</i></td>
+            </tr>
+            {%endif%}
+        </tbody>
+    </table>
+    <a href="/all/submissions" class="text-decoration-none">show more</a>
+    </div>
+
+    <div class="tab-pane container fade mt-3" id="requests">
+      <table class="table  table-hover table-responsive" style="border-color: rgba(106, 140, 112, 1);">
+        <tbody>
+            {%if requests%}
+            {% for item in requests %}
+            <tr class="clickable" onclick="window.location='/view/request/{{item._id}}'">
+                <td>{{item.type}}</td>
+                <td><p style="font-size:smaller;">{{item.date_submitted}}</p></td>
+                {% if user_profile.uid==item.sender["uid"] %}<td><i>{{item.status}}</i></td>
+                {%else%}<td><i>by {{item.sender["uid"]}}</i></td>{% endif %}
+            </tr>
+        
+            {% endfor %}
+            {%else%}
+            <tr>
+                <td>Dummy request</td>
+                <td><p style="font-size:smaller;">10 minutes ago</p></td>
+                <td><i>by dummy</i></td>
+            </tr>
+            {%endif%}
+        </tbody>
+    </table>
+    <a href="/all/submissions" class="text-decoration-none">show more</a>
+
+    </div>
+
+    <div class="tab-pane container fade mt-3" id="projects">
+      <table class="table table-hover table-responsive" style="border-color: rgba(106, 140, 112, 1);">
+        {%if user_profile.role !="Intern"%}<div class="text-end"><button type="button" class="border-0 mb-2 rounded-pill" data-bs-toggle="modal" data-bs-target="#newProject" style="background: rgba(155, 178, 160, 1); width:150px; height:30px"><i class="bi bi-plus-square-fill me-2"></i>New project</button></div>{%endif%}
+        <tbody>
+            {%if projects%}
+            {% for item in projects %}
+            <tr class="clickable" onclick="window.location='/view/project/{{item._id}}'">
+                <td>{{item.topic}}</td>
+                <td><p style="font-size:smaller;">{{item.deadline}}</p></td>
+                {% if user_profile.uid !=item.sender["uid"] %}<td><i>by {{item.sender["uid"]}}</i></td>{% endif %}
+                {%if user_profile.role=="Admin"%}
+                {%if "no_submissions" in item%}<td><span  class="badge rounded-pill bg-primary">{{item.no_submissions}}</span> submissions</td>
+                {% else %}<td><span  class="badge rounded-pill bg-primary">0</span> submissions</td>{% endif %}
+                {%endif%}
+            </tr>
+        
+            {% endfor %}
+            {%else%}
+            <tr>
+                <td>Dummy project</td>
+                <td><p style="font-size:smaller;">10 minutes ago</p></td>
+            </tr>
+            {%endif%}
+        </tbody>
+    </table>
+    <a href="/submissions/interns" class="text-decoration-none">show more</a>
+    </div>
   </div>
   
 </div>
@@ -147,9 +318,9 @@
       </div>
       <div class="col text-end">
         <div class="dropdown">
-          <button type="button" class="border-0" data-bs-toggle="dropdown"><i class="bi bi-three-dots-vertical"></i></button>
+          <button type="button" class="btn" data-bs-toggle="dropdown" style="padding-top:2px;padding-bottom:2px;"><i class="bi bi-three-dots-vertical" ></i></button>
             
-            <ul class="dropdown-menu">
+            <ul class="dropdown-menu"style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
               <li><a class="dropdown-item" href="/view/members">View all</a></li>
               <li><a class="dropdown-item" href="#">Link 2</a></li>
               <li><a class="dropdown-item" href="#">Link 3</a></li>
@@ -166,7 +337,7 @@
           </div>
           <div class="col text-end">
             <div class="dropdown">
-              <button type="button" class="border-0" data-bs-toggle="dropdown"><i class="bi bi-three-dots-vertical"></i></button>
+              <button type="button" class="btn" data-bs-toggle="dropdown" style="padding-top:2px;padding-bottom:2px;"><i class="bi bi-three-dots-vertical" ></i></button>
                 
                 <ul class="dropdown-menu">
                   <li><a class="dropdown-item" href="/view/members">View all</a></li>
@@ -328,6 +499,74 @@
     </div>
   </div>
 </div>
+
+
+<!-- The Modal -->
+<div class="modal fade" id="newProject">
+  <div class="modal-dialog">
+    <div class="modal-content" style="background: rgba(205, 217, 207, 1);">
+
+      <!-- Modal Header -->
+      <div class="modal-header" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+        <h4 class="modal-title">Create a new project</h4>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+    <form action='/submissions/create/projects' method="post">
+      <!-- Modal body -->
+      <div class="modal-body">
+        <div class="row mb-3 mt-3">
+            <div class="col" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+              <h6 class="modal-title">Topic</h6>
+              <input type="text" class="form-control" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);" placeholder="e.g Security System Alert" name="topic" required>
+            </div>
+          </div>
+
+          <div class="row mb-3 mt-3">
+            <div class="col" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+              <h6 class="modal-title">Focus</h6>
+              <textarea type="textarea" rows="4" class="form-control" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);" name="focus" placeholder="State focus" required></textarea>
+            </div>
+          </div>
+
+          <div class="row mb-3 mt-3">
+            <div class="col" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+              <h6 class="modal-title">Objectives</h6>
+              <textarea type="textarea"  rows="4" class="form-control" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);" name="objectives" placeholder="State objectives" required></textarea>
+            </div>
+          </div>
+          
+          <div class="row mb-3 mt-3">
+            <div class="col">
+              <h6 class="modal-title">Assigned to</h6>
+              <select class="form-select" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);" name="recipient" required>
+                {% if user_profile.role !="Admin" %}<option value ="{{user_profile.stack}}">all stack members </option>{%endif%}
+                {%if personnels%}
+                {% for it in personnels%}
+                <option value="{{it._id}}" >{{it.uid}}</option>
+                {%endfor%}
+                {%endif%}
+              </select>
+            </div>
+          </div>
+
+          <div class="row mb-3 mt-3">
+            <div class="col" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+              <h6 class="modal-title">Deadline</h6>
+              <input type="datetime-local" class="form-control" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);" name="deadline" required>
+            </div>
+          </div>
+
+          <div class="text-center">
+            <button type="submit" class="btn" style="background: linear-gradient(267.33deg, #386641 5.13%, #9BB2A0 94.79%);">Create</button>
+          </div>
+      </div>
+    </form>
+      
+
+    </div>
+  </div>
+</div>
+
 
 
 

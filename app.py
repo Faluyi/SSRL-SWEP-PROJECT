@@ -1,20 +1,24 @@
-from flask import Flask, session, render_template, redirect, url_for, request, flash
+from flask import Flask, session, render_template, redirect, url_for, request, flash, send_file
 from flask_bcrypt import Bcrypt, check_password_hash, generate_password_hash
 from flask_mail import Mail, Message
 from db.models import *
 from datetime import datetime
 from werkzeug.utils import secure_filename
+from io import BytesIO
 import os 
+from properties import *
 
 User_db = Userdb()
 Eqpt_db = Eqptdb()
 lost_eqpt_db = lost_eqptdb()
+Inventory_db = Inventorydb()
 Request_db = Requestdb()
 Report_db = Reportdb()
 Project_db = Projectdb()
 
 UPLOAD_FOLDER = 'static/images'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'svg'}
+PROJECT_FOLDER = 'submissions/projects'
+
 
 app = Flask(__name__)
 
@@ -23,18 +27,18 @@ bcrypt = Bcrypt(app)
 app.secret_key = "SSRL"
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['PROJECT_FOLDER'] = PROJECT_FOLDER
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 465
 app.config['MAIL_USERNAME'] = 'smartsystemlaboratory@gmail.com'
-app.config['MAIL_PASSWORD'] = 'pztlwqclbadcrhyo'
+app.config['MAIL_PASSWORD'] = email_pswd
 app.config['MAIL_USE_TLS'] = False
 app.config['MAIL_USE_SSL'] = True
 
 mail = Mail(app)
 
 
-def alllowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 @app.get('/')
 def login():
@@ -51,11 +55,94 @@ def logout():
         flash  ('you are not logged in!', "danger")
         return redirect(url_for('login'))
     
+@app.get('/forgot/password')
+def forgot_password():
+
+    return render_template('forms/forgot_password.html')
+
+@app.post('/confirm/credentials')
+def confirm_credentials():
+    uid = request.form.get("uid")
+    email = request.form.get("email")
+    user = User_db.get_user_by_uid(uid)
+    if user:
+        if user["email"]==email:
+            otp = generate.OTP()
+            try:
+                msg = Message('SSRL password recovery', sender = 'smartsystemlaboratory@gmail.com', recipients = [email])
+                msg.body = f"Enter the OTP below into the requested field \nThe OTP will expire in 24 hours\n\nOTP: {otp}  \n\n\nFrom SSRL Team"
+                
+                mail.send(msg)
+                
+                session["uid"]=uid
+                session["otp"]=otp
+                flash("Check your email for the OTP","info")
+                return render_template('forms/confirm_otp.html')
+                
+            except:
+                flash("Unable to recover your account at the moment! Please confirm that the inputed email is correct or check your internet connection.", "danger")
+                return redirect(url_for('forgot_password'))
+        else:
+            flash("Please confirm that the inputed email is correct!", "danger")
+            return redirect(url_for('forgot_password'))
     
-@app.route('/home/me')
+    else:
+        flash("Please confirm that the inputed ID is correct!", "danger")
+        return redirect(url_for('forgot_password'))
+    
+
+@app.post('/confirm/otp')
+def confirm_otp():
+        input = request.form.get("otp")
+        otp = session["otp"]
+        if input==otp:
+            session.pop("otp",None)
+            return render_template('forms/change_password.html')
+        else:
+            flash("Invalid OTP!", "danger")
+            return render_template('forms/confirm_otp,html')
+    
+
+@app.post('/change/password')
+def change_password():
+        
+        new_pwd = request.form.get("new_pwd")
+        confirm_pwd = request.form.get("confirm_pwd")
+        
+        
+        if new_pwd == confirm_pwd:
+            uid = session["uid"]
+            hashed_pwd = generate_password_hash(new_pwd)
+            dtls = updatePwd(hashed_pwd)
+            updated = User_db.update_user_profile(uid, dtls)
+            
+            if updated:
+                user_profile = User_db.get_user_by_uid(uid)
+                session["user_uid"] = uid
+                session["user_id"] = str(user_profile["_id"])
+                session["user_role"] = user_profile["role"]
+                session["stack"] = user_profile["stack"]
+                fullname = user_profile["fullname"]
+                session.pop("uid", None)
+                flash(f"Password changed successfully! Welcome back {fullname}", "success")
+                return redirect(url_for('home'))
+            else:
+                flash("Unable to change your password! Try again", "danger")
+                return render_template('forms/change_password.html')
+        else:
+            flash("Unmatching password input! Unable to update your password", "danger")
+            return render_template('forms/change_password.html')
+
+            
+
+
+        
+    
+@app.get('/home/me')
 def home():
     if "user_id" in session:
         user_id = session["user_id"]
+        uid = session["user_uid"]
         user_role = session["user_role"]
         stack = session["stack"]
         user_profile = User_db.get_user_by_oid(user_id)
@@ -80,11 +167,38 @@ def home():
         
         if user_role=="Admin":
             members = list(User_db.get_all_users_limited())
-            return render_template("pages/home.html", user_profile=user_profile, date=date, members=members)
+            reports = list(Report_db.get_by_recipient_limited(position=user_role))
+            requests = list(Request_db.get_by_recipient_limited(position=user_role, user_id=user_id))
+            projects = list(Project_db.get_by_sender_limited(user_id, uid))
+            personnels = list(User_db.get_all_users())
+
+            return render_template("pages/home.html", user_profile=user_profile, date=date, members=members, reports=reports, requests=requests, projects=projects, personnels=personnels)
             
-        elif user_role != "Admin":
+        elif user_role == "Intern":
+            reports =list(Report_db.get_by_sender(user_id, uid))
+            requests = list(Request_db.get_by_sender(user_id, uid))
+            projects = []
+            
+            project_all = list(Project_db.get_by_recipient_dtls(category="all", recipient=stack, name="All stack members"))
+            for project in project_all:
+                projects.append(project)
+                
+            project_one = list(Project_db.get_by_recipient_dtls(category="one", recipient=user_id, name=uid))
+            for project in project_one:
+                projects.append(project)
+                
+            projects.sort(reverse=True, key=sortFunc)
+                
             members = list(User_db.get_users_by_stack_limited(stack))
-            return render_template("pages/home.html", user_profile=user_profile, date=date, members=members)
+            return render_template("pages/home.html", user_profile=user_profile, date=date, members=members, reports=reports, requests=requests, projects=projects)
+        
+        elif user_role == "Lead":
+            reports =list(Report_db.get_by_sender(user_id, uid))
+            requests = list(Request_db.get_by_sender(user_id, uid))
+            projects = list(Project_db.get_by_recipient_dtls(category="one", recipient=user_id, name=uid))
+                
+            members = list(User_db.get_users_by_stack_limited(stack))
+            return render_template("pages/home.html", user_profile=user_profile, date=date, members=members, reports=reports, requests=requests, projects=projects)
         
         else:
             flash("permission not granted!", "danger")
@@ -125,7 +239,7 @@ def authenticate_user():
         return redirect(url_for('login'))
 
     
-@app.route('/Admin/create/user', methods=["GET", "POST"])
+@app.post('/Admin/create/user')
 def create_user():
     user_role = session["user_role"]
     
@@ -166,10 +280,10 @@ def create_user():
                 
                 mail.send(msg)
                 
-                User_db.create_user(usr)
+                user_id = User_db.create_user(usr)
                 
                 flash(f"user {uid} created successfully","success")
-                return redirect(url_for('home'))
+                return redirect(url_for('show_user_profile', requested_id=user_id ))
             except:
                 flash("Unable to create user at the moment! Please confirm that the inputed email is correct or check your internet connection.", "danger")
                 return redirect(url_for('home'))
@@ -226,7 +340,7 @@ def view_members():
         flash  ('you are not logged in!', "danger")
         return redirect(url_for('login'))
 
-@app.route('/show/profile/<requested_id>', methods=["POST","GET"])
+@app.get('/show/profile/<requested_id>')
 def show_user_profile(requested_id):
     user_role = session["user_role"]
     stack = session["stack"]
@@ -269,15 +383,15 @@ def user_edit_profile():
             bio = request.form.get("bio")
             location = request.form.get("location")
             bday = request.form.get("bday")
-            
-            if avatar and alllowed_file(avatar.filename):
-                filename = secure_filename(avatar.filename)
-                avatar.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            filename = secure_filename(avatar.filename)
+            if avatar and AllowedExtension.images(filename):
+                
                 dtls = updateUser(filename, phone_num, bio, location, bday)
                 
                 updated = User_db.update_user_profile_by_oid(user_id, dtls)
                 
                 if updated:
+                    avatar.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
                     flash("profile updated successfully", "success")
                     return redirect(url_for('view_profile_me'))
                 else:
@@ -330,15 +444,14 @@ def admin_edit_profile(edit_id):
                     uid = profile["uid"]
                     
                     
-                    
-                    if avatar and alllowed_file(avatar.filename):
-                        filename = secure_filename(avatar.filename)
-                        avatar.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+                    filename = secure_filename(avatar.filename)
+                    if avatar and AllowedExtension.images(filename):
                         dtls = updateAdmin(firstname, surname, fullname, uid, stack, niche, role, filename, phone_num, email, bio, location, bday)
 
                         updated = User_db.update_user_profile_by_oid(user_id, dtls)
                     
                         if updated:
+                            avatar.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
                             flash("profile updated successfully", "success")
                             return redirect(url_for('view_profile_me'))
                         else:
@@ -363,14 +476,13 @@ def admin_edit_profile(edit_id):
                 else:
                     uid = generate.user_id(firstname)
                     
-                    
-                    if avatar and alllowed_file(avatar.filename):
-                        filename = secure_filename(avatar.filename)
-                        avatar.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+                    filename = secure_filename(avatar.filename)
+                    if avatar and AllowedExtension.images(filename):
                         dtls = updateAdmin(firstname, surname, fullname, uid, stack, niche, role, filename, phone_num, email, bio, location, bday)
 
                         updated = User_db.update_user_profile_by_oid(user_id, dtls)
                         if updated:
+                            avatar.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
                             flash("profile updated successfully,", "success")
                             return redirect(url_for('view_profile_me'))
                         else:
@@ -455,19 +567,31 @@ def admin_edit_profile(edit_id):
     
 
 
-@app.route('/Add/lead/<intern_uid>')
+@app.get('/Add/lead/<intern_uid>')
 def admin_add_lead(intern_uid):
     user_role = session["user_role"]
     if "user_id" in session:
         if user_role == "Admin":
+            stack = User_db.get_user_by_uid(intern_uid)["stack"]
+            uid = User_db.get_lead(stack)["uid"]
+            
             dtls = {
-                "role": "Lead"
+                "role": "Intern"
             }
-            updated = User_db.update_user_role(intern_uid, dtls)
+            updated = User_db.update_user_role(uid, dtls)
             
             if updated:
-                flash("profile updated successfully", "success")
-                return redirect(url_for('view_members'))
+                dtls = {
+                    "role": "Lead"
+                }
+                updated = User_db.update_user_role(intern_uid, dtls)
+            
+                if updated:
+                    flash(f"You've successfully made {intern_uid} the {stack} Lead", "success")
+                    return redirect(url_for('view_members'))
+                else:
+                    flash("profile update unsuccessful!", "danger")
+                    return redirect(url_for('view_members'))
             else:
                 flash("profile update unsuccessful!", "danger")
                 return redirect(url_for('view_members'))
@@ -578,8 +702,9 @@ def view_all_eqpt():
             personnels = User_db.get_all_users()
             lost_eqpts = lost_eqpt_db.get_all()
             availables = Eqpt_db.get_all_available_eqpt()
+            inventory = list(Inventory_db.get_all())
             
-            return render_template('pages/equipments.html', user_profile=user_profile, equipments=equipments, lost_eqpts=lost_eqpts, personnels=personnels, availables=availables)
+            return render_template('pages/equipments.html', user_profile=user_profile, equipments=equipments, lost_eqpts=lost_eqpts, personnels=personnels, availables=availables, inventory=inventory)
 
         else:
             flash('permission not granted', "danger")
@@ -617,7 +742,7 @@ def eqpt_new_input():
     if "user_id" in session:
         if user_role=="Admin" or (user_role =="Lead" and stack == "Hardware"):
          
-            name = request.form.get("name")
+            Name = request.form.get("name")
             quantity = request.form.get("quantity")
             description = request.form.get("description")
             date_of_arrival = request.form.get("arrival")
@@ -628,19 +753,81 @@ def eqpt_new_input():
             date = now("%d")
             year = now("%Y")
             datetime_inputed = "{0} {1}, {2}".format(month, date, year)
-            date_updated = ""
+            date_inserted = now("%x")
         
-            dtls = Eqpt(name, quantity, description, date_of_arrival, type, status, datetime_inputed, date_updated)
+            dtls = Eqpt(Name, quantity, description, date_of_arrival, type, status, datetime_inputed, date_inserted)
             
-            Eqpt_db.new_input(dtls)
-            flash (f"Equipment {name} inputed successfully!", "success")
-            return redirect(url_for('view_all_eqpt'))
+            eqpt_id = Eqpt_db.new_input(dtls)
+            if eqpt_id:
+                name = {
+                    "name": Name,
+                    "id": eqpt_id
+                }
+                dtls = Eqpt(Name, quantity, description, date_of_arrival, type, status, datetime_inputed, date_inserted)
+                Inventory_db.insert_new(dtls)
+            
+                flash (f"Equipment {name} inputed successfully!", "success")
+                return redirect(url_for('view_eqpt_dtls', eqpt_id=eqpt_id))
+            else:
+                flash('An error occured!try again', 'danger')
+                return redirect(url_for('view_all_eqpt'))
         else:
             flash('permission not granted', "danger")
             return redirect(url_for('login'))            
     else:
         flash  ('you are not logged in!', "danger")
         return redirect(url_for('login'))
+    
+@app.post('/equipment/existing/input')
+def eqpt_existing_input():
+    user_role = session["user_role"]
+    stack = session["stack"]
+    
+    if "user_id" in session:
+        if user_role=="Admin" or (user_role =="Lead" and stack == "Hardware"):
+         
+            eqpt_id = request.form.get("eqpt_id")
+            added_quantity = request.form.get("quantity")
+            eqpt = Eqpt_db.get_eqpt_by_id(eqpt_id)
+            name = {
+                "name": eqpt["name"],
+                "id" : eqpt_id
+                
+            }
+            existing_quantity = eqpt["quantity"]
+            quantity = int(added_quantity) + int(existing_quantity)
+            description = eqpt["description"]
+            date_of_arrival = request.form.get("arrival")
+            type = eqpt["type"]
+            status = "available"
+            now = datetime.now().strftime
+            month = now("%B")
+            date = now("%d")
+            year = now("%Y")
+            datetime_inputed = "{0} {1}, {2}".format(month, date, year)
+            date_inserted = now("%x")
+        
+            dtls = existEqpt(quantity, datetime_inputed, status)
+            
+            updated = Eqpt_db.update_eqpt_dtls(eqpt_id, dtls)
+            
+            if updated:
+                dtls = Eqpt(name, added_quantity, description, date_of_arrival, type, status, datetime_inputed, date_inserted)
+                Inventory_db.insert_new(dtls)
+                flash (f"Equipment inputed successfully!", "success")
+                return redirect(url_for('view_eqpt_dtls', eqpt_id=eqpt_id))
+            else:
+                flash('An error occured!try again', 'danger')
+                return redirect(url_for('view_all_eqpt'))
+                
+        else:
+            flash('permission not granted', "danger")
+            return redirect(url_for('login'))            
+    else:
+        flash  ('you are not logged in!', "danger")
+        return redirect(url_for('login'))
+    
+
     
 @app.post('/equipment/update/<eqpt_id>')
 def update_eqpt_dtls(eqpt_id):
@@ -727,7 +914,7 @@ def lost_eqpt():
             date_edited = ""
             
             dtls = lostEqpt(eqpt_id, name, type, quantity, personnel_id, status, date_reported, date_edited)
-            lost_eqpt_db.new_input(dtls)
+            lost_id = lost_eqpt_db.new_input(dtls)
             
             curr_quantity1 = old_quant - int(quantity)
             if curr_quantity1 > 1 :
@@ -746,7 +933,7 @@ def lost_eqpt():
             Eqpt_db.update_eqpt_dtls(eqpt_id, dtls)
             
             flash (f"Equipment {name} recorded {status} successfully!", "success")
-            return redirect(url_for('view_all_eqpt'))
+            return redirect(url_for('view_lost_eqpt_dtls', eqpt_id=lost_id))
             
         else:
                 flash('permission not granted', "danger")
@@ -932,35 +1119,382 @@ def all_submissions():
     uid = session["user_uid"]
     stack = session["stack"]
     user_profile = User_db.get_user_by_oid(_id)
-    
+    eqpts = Eqpt_db.get_all_available_eqpt()
     
     if "user_id" in session:
         if role == "Intern":
             reports =list(Report_db.get_by_sender(_id, uid))
             requests = list(Request_db.get_by_sender(_id, uid))
-            projects = list(Project_db.get_by_choice_recipient(stack))
+            projects = []
             
-            return render_template('pages/all_submissions.html', reports=reports, requests=requests, projects=projects, user_profile=user_profile)
+            project_all = list(Project_db.get_by_recipient_dtls(category="all", recipient=stack, name="All stack members"))
+            for project in project_all:
+                projects.append(project)
+                
+            project_one = list(Project_db.get_by_recipient_dtls(category="one", recipient=_id, name=uid))
+            for project in project_one:
+                projects.append(project)
+                
+            projects.sort(reverse=True, key=sortFunc)
+            
+            for x in reports:
+                    date_time = x["date_time"].strftime("%j")
+                    diff = int(datetime.now().strftime("%j")) - int(date_time)
+                    
+                    if diff == 0:
+                        date_time_H = x["date_time"].strftime("%H")
+                        diff_H = int(datetime.now().strftime("%H")) - int(date_time_H)
+                        if diff_H == 0:
+                            date_time_M = x["date_time"].strftime("%M")
+                            diff_M = int(datetime.now().strftime("%M")) - int(date_time_M)
+                            if diff_M == 0:
+                                x["date_submitted"] = "now"
+                            else:
+                                x["date_submitted"] = f"{diff_M} minutes ago"
+                        elif diff_H > 0:
+                            x["date_submitted"] = f"{diff_H} hours ago"
+                            
+                    elif diff==1:
+                        x["date_submitted"] = "yesterday"
+                            
+            for x in requests:
+                date_time = x["date_time"].strftime("%j")
+                diff = int(datetime.now().strftime("%j")) - int(date_time)
+                
+                if diff == 0:
+                    date_time_H = x["date_time"].strftime("%H")
+                    diff_H = int(datetime.now().strftime("%H")) - int(date_time_H)
+                    if diff_H == 0:
+                        date_time_M = x["date_time"].strftime("%M")
+                        diff_M = int(datetime.now().strftime("%M")) - int(date_time_M)
+                        if diff_M == 0:
+                            x["date_submitted"] = "now"
+                        else:
+                            x["date_submitted"] = f"{diff_M} minutes ago"
+                    elif diff_H > 0:
+                        x["date_submitted"] = f"{diff_H} hours ago"
+                        
+                elif diff==1:
+                    x["date_submitted"] = "yesterday"
+                    
+            for x in projects:
+                    date_time = x["date_time"].strftime("%j")
+                    diff = int(datetime.now().strftime("%j")) - int(date_time)
+                    
+                    if diff == 0:
+                        date_time_H = x["date_time"].strftime("%H")
+                        diff_H = int(datetime.now().strftime("%H")) - int(date_time_H)
+                        if diff_H == 0:
+                            date_time_M = x["date_time"].strftime("%M")
+                            diff_M = int(datetime.now().strftime("%M")) - int(date_time_M)
+                            if diff_M == 0:
+                                x["date_created"] = "now"
+                            else:
+                                x["date_created"] = f"{diff_M} minutes ago"
+                        elif diff_H > 0:
+                            x["date_creatted"] = f"{diff_H} hours ago"
+                            
+                    elif diff==1:
+                        x["date_created"] = "yesterday"
+
+            
+            return render_template('pages/my_submissions.html', reports=reports, requests=requests, projects=projects, user_profile=user_profile, eqpts=eqpts)
         
         elif role == "Lead":
+            if stack == "Software":
+                reports =list(Report_db.get_by_sender(_id, uid))
+                requests = list(Request_db.get_by_sender(_id, uid))
+                projects = list(Project_db.get_by_recipient_dtls(category="one", recipient=_id, name=uid))
+                
+                for x in reports:
+                    date_time = x["date_time"].strftime("%j")
+                    diff = int(datetime.now().strftime("%j")) - int(date_time)
+                    
+                    if diff == 0:
+                        date_time_H = x["date_time"].strftime("%H")
+                        diff_H = int(datetime.now().strftime("%H")) - int(date_time_H)
+                        if diff_H == 0:
+                            date_time_M = x["date_time"].strftime("%M")
+                            diff_M = int(datetime.now().strftime("%M")) - int(date_time_M)
+                            if diff_M == 0:
+                                x["date_submitted"] = "now"
+                            else:
+                                x["date_submitted"] = f"{diff_M} minutes ago"
+                        elif diff_H > 0:
+                            x["date_submitted"] = f"{diff_H} hours ago"
+                            
+                    elif diff==1:
+                        x["date_submitted"] = "yesterday"
+                            
+                for x in requests:
+                    date_time = x["date_time"].strftime("%j")
+                    diff = int(datetime.now().strftime("%j")) - int(date_time)
+                    
+                    if diff == 0:
+                        date_time_H = x["date_time"].strftime("%H")
+                        diff_H = int(datetime.now().strftime("%H")) - int(date_time_H)
+                        if diff_H == 0:
+                            date_time_M = x["date_time"].strftime("%M")
+                            diff_M = int(datetime.now().strftime("%M")) - int(date_time_M)
+                            if diff_M == 0:
+                                x["date_submitted"] = "now"
+                            else:
+                                x["date_submitted"] = f"{diff_M} minutes ago"
+                        elif diff_H > 0:
+                            x["date_submitted"] = f"{diff_H} hours ago"
+                            
+                    elif diff==1:
+                        x["date_submitted"] = "yesterday"
+                    
+                for x in projects:
+                    date_time = x["date_time"].strftime("%j")
+                    diff = int(datetime.now().strftime("%j")) - int(date_time)
+                    
+                    if diff == 0:
+                        date_time_H = x["date_time"].strftime("%H")
+                        diff_H = int(datetime.now().strftime("%H")) - int(date_time_H)
+                        if diff_H == 0:
+                            date_time_M = x["date_time"].strftime("%M")
+                            diff_M = int(datetime.now().strftime("%M")) - int(date_time_M)
+                            if diff_M == 0:
+                                x["date_created"] = "now"
+                            else:
+                                x["date_created"] = f"{diff_M} minutes ago"
+                        elif diff_H > 0:
+                            x["date_creatted"] = f"{diff_H} hours ago"
+                            
+                    elif diff==1:
+                        x["date_created"] = "yesterday"
+
+            
+                return render_template('pages/my_submissions.html', reports=reports, requests=requests, projects=projects, user_profile=user_profile, eqpts=eqpts)
+            
+            else:
+                reports =list(Report_db.get_by_sender(_id, uid))
+                requests = list(Request_db.get_by_sender(_id, uid))
+                projects = list(Project_db.get_by_recipient_dtls(category="one", recipient=_id, name=uid))
+                
+                for x in reports:
+                    date_time = x["date_time"].strftime("%j")
+                    diff = int(datetime.now().strftime("%j")) - int(date_time)
+                    
+                    if diff == 0:
+                        date_time_H = x["date_time"].strftime("%H")
+                        diff_H = int(datetime.now().strftime("%H")) - int(date_time_H)
+                        if diff_H == 0:
+                            date_time_M = x["date_time"].strftime("%M")
+                            diff_M = int(datetime.now().strftime("%M")) - int(date_time_M)
+                            if diff_M == 0:
+                                x["date_submitted"] = "now"
+                            else:
+                                x["date_submitted"] = f"{diff_M} minutes ago"
+                        elif diff_H > 0:
+                            x["date_submitted"] = f"{diff_H} hours ago"
+                            
+                    elif diff==1:
+                        x["date_submitted"] = "yesterday"
+                            
+                for x in requests:
+                    date_time = x["date_time"].strftime("%j")
+                    diff = int(datetime.now().strftime("%j")) - int(date_time)
+                    
+                    if diff == 0:
+                        date_time_H = x["date_time"].strftime("%H")
+                        diff_H = int(datetime.now().strftime("%H")) - int(date_time_H)
+                        if diff_H == 0:
+                            date_time_M = x["date_time"].strftime("%M")
+                            diff_M = int(datetime.now().strftime("%M")) - int(date_time_M)
+                            if diff_M == 0:
+                                x["date_submitted"] = "now"
+                            else:
+                                x["date_submitted"] = f"{diff_M} minutes ago"
+                        elif diff_H > 0:
+                            x["date_submitted"] = f"{diff_H} hours ago"
+                            
+                    elif diff==1:
+                        x["date_submitted"] = "yesterday"
+                        
+                    
+                for x in projects:
+                    date_time = x["date_time"].strftime("%j")
+                    diff = int(datetime.now().strftime("%j")) - int(date_time)
+                    
+                    if diff == 0:
+                        date_time_H = x["date_time"].strftime("%H")
+                        diff_H = int(datetime.now().strftime("%H")) - int(date_time_H)
+                        if diff_H == 0:
+                            date_time_M = x["date_time"].strftime("%M")
+                            diff_M = int(datetime.now().strftime("%M")) - int(date_time_M)
+                            if diff_M == 0:
+                                x["date_created"] = "now"
+                            else:
+                                x["date_created"] = f"{diff_M} minutes ago"
+                        elif diff_H > 0:
+                            x["date_creatted"] = f"{diff_H} hours ago"
+                            
+                    elif diff==1:
+                        x["date_created"] = "yesterday"
+
+            
+                return render_template('pages/my_submissions.html', reports=reports, requests=requests, projects=projects, user_profile=user_profile, eqpts=eqpts)
+        else:
+                flash('permission not granted', "danger")
+                return redirect(url_for('login'))
+        
+    else:
+        flash  ('you are not logged in!', "danger")
+        return redirect(url_for('login'))
+    
+@app.get('/submissions/interns')
+def intern_submissions():
+    role = session["user_role"]
+    _id = session["user_id"]
+    uid = session["user_uid"]
+    stack = session["stack"]
+    user_profile = User_db.get_user_by_oid(_id)
+    eqpts = Eqpt_db.get_all_available_eqpt()
+    
+    if "user_id" in session:
+        if role == "Lead":
             if stack == "Software":
                 position = "Software"
                 reports =  list(Report_db.get_by_recipient(position))
                 requests = list(Request_db.get_by_recipient(position, _id))
-                app.logger.info(requests)
                 projects = list(Project_db.get_by_sender(_id, uid))
                 personnels = list(User_db.get_users_by_stack(stack))
+                
+                for x in reports:
+                    date_time = x["date_time"].strftime("%j")
+                    diff = int(datetime.now().strftime("%j")) - int(date_time)
+                    
+                    if diff == 0:
+                        date_time_H = x["date_time"].strftime("%H")
+                        diff_H = int(datetime.now().strftime("%H")) - int(date_time_H)
+                        if diff_H == 0:
+                            date_time_M = x["date_time"].strftime("%M")
+                            diff_M = int(datetime.now().strftime("%M")) - int(date_time_M)
+                            if diff_M == 0:
+                                x["date_submitted"] = "now"
+                            else:
+                                x["date_submitted"] = f"{diff_M} minutes ago"
+                        elif diff_H > 0:
+                            x["date_submitted"] = f"{diff_H} hours ago"
+                            
+                    elif diff==1:
+                        x["date_submitted"] = "yesterday"
+                            
+                for x in requests:
+                    date_time = x["date_time"].strftime("%j")
+                    diff = int(datetime.now().strftime("%j")) - int(date_time)
+                    
+                    if diff == 0:
+                        date_time_H = x["date_time"].strftime("%H")
+                        diff_H = int(datetime.now().strftime("%H")) - int(date_time_H)
+                        if diff_H == 0:
+                            date_time_M = x["date_time"].strftime("%M")
+                            diff_M = int(datetime.now().strftime("%M")) - int(date_time_M)
+                            if diff_M == 0:
+                                x["date_submitted"] = "now"
+                            else:
+                                x["date_submitted"] = f"{diff_M} minutes ago"
+                        elif diff_H > 0:
+                            x["date_submitted"] = f"{diff_H} hours ago"
+                            
+                    elif diff==1:
+                        x["date_submitted"] = "yesterday"
+                
+                for x in projects:
+                    date_time = x["date_time"].strftime("%j")
+                    diff = int(datetime.now().strftime("%j")) - int(date_time)
+                    
+                    if diff == 0:
+                        date_time_H = x["date_time"].strftime("%H")
+                        diff_H = int(datetime.now().strftime("%H")) - int(date_time_H)
+                        if diff_H == 0:
+                            date_time_M = x["date_time"].strftime("%M")
+                            diff_M = int(datetime.now().strftime("%M")) - int(date_time_M)
+                            if diff_M == 0:
+                                x["date_created"] = "now"
+                            else:
+                                x["date_created"] = f"{diff_M} minutes ago"
+                        elif diff_H > 0:
+                            x["date_created"] = f"{diff_H} hours ago"
+                            
+                    elif diff==1:
+                        x["date_created"] = "yesterday"
+
             
-                return render_template('pages/all_submissions.html', reports=reports, requests=requests, projects=projects, user_profile=user_profile, personnels=personnels)
+                return render_template('pages/intern_submissions.html', reports=reports, requests=requests, projects=projects, user_profile=user_profile, personnels=personnels)
             else:
                 position = "Hardware"
                 reports = list(Report_db.get_by_recipient(position))
                 requests = list(Request_db.get_by_recipient(position, _id))
                 projects = list(Project_db.get_by_sender(_id, uid))
                 personnels = list(User_db.get_users_by_stack(stack))
-            
-                return render_template('pages/all_submissions.html', reports=reports, requests=requests, projects=projects, user_profile=user_profile, personnels=personnels)
+                
+                for x in reports:
+                    date_time = x["date_time"].strftime("%j")
+                    diff = int(datetime.now().strftime("%j")) - int(date_time)
+                    
+                    if diff == 0:
+                        date_time_H = x["date_time"].strftime("%H")
+                        diff_H = int(datetime.now().strftime("%H")) - int(date_time_H)
+                        if diff_H == 0:
+                            date_time_M = x["date_time"].strftime("%M")
+                            diff_M = int(datetime.now().strftime("%M")) - int(date_time_M)
+                            if diff_M == 0:
+                                x["date_submitted"] = "now"
+                            else:
+                                x["date_submitted"] = f"{diff_M} minutes ago"
+                        elif diff_H > 0:
+                            x["date_submitted"] = f"{diff_H} hours ago"
+                            
+                    elif diff==1:
+                        x["date_submitted"] = "yesterday"
+                            
+                for x in requests:
+                    date_time = x["date_time"].strftime("%j")
+                    diff = int(datetime.now().strftime("%j")) - int(date_time)
+                    
+                    if diff == 0:
+                        date_time_H = x["date_time"].strftime("%H")
+                        diff_H = int(datetime.now().strftime("%H")) - int(date_time_H)
+                        if diff_H == 0:
+                            date_time_M = x["date_time"].strftime("%M")
+                            diff_M = int(datetime.now().strftime("%M")) - int(date_time_M)
+                            if diff_M == 0:
+                                x["date_submitted"] = "now"
+                            else:
+                                x["date_submitted"] = f"{diff_M} minutes ago"
+                        elif diff_H > 0:
+                            x["date_submitted"] = f"{diff_H} hours ago"
+                            
+                    elif diff==1:
+                        x["date_submitted"] = "yesterday"
+                
+                for x in projects:
+                    date_time = x["date_time"].strftime("%j")
+                    diff = int(datetime.now().strftime("%j")) - int(date_time)
+                    
+                    if diff == 0:
+                        date_time_H = x["date_time"].strftime("%H")
+                        diff_H = int(datetime.now().strftime("%H")) - int(date_time_H)
+                        if diff_H == 0:
+                            date_time_M = x["date_time"].strftime("%M")
+                            diff_M = int(datetime.now().strftime("%M")) - int(date_time_M)
+                            if diff_M == 0:
+                                x["date_created"] = "now"
+                            else:
+                                x["date_created"] = f"{diff_M} minutes ago"
+                        elif diff_H > 0:
+                            x["date_created"] = f"{diff_H} hours ago"
+                            
+                    elif diff==1:
+                        x["date_created"] = "yesterday"
 
+
+                return render_template('pages/intern_submissions.html', reports=reports, requests=requests, projects=projects, user_profile=user_profile, personnels=personnels)
+        
         elif role == "Admin":
             position = "Admin"
             reports = list(Report_db.get_by_recipient(position))
@@ -968,7 +1502,71 @@ def all_submissions():
             projects = list(Project_db.get_by_sender(_id, uid))
             personnels = list(User_db.get_all_users())
             
-            return render_template('pages/all_submissions.html', reports=reports, requests=requests, projects=projects, user_profile=user_profile, personnels=personnels)
+            for x in reports:
+                    date_time = x["date_time"].strftime("%j")
+                    diff = int(datetime.now().strftime("%j")) - int(date_time)
+                    
+                    if diff == 0:
+                        date_time_H = x["date_time"].strftime("%H")
+                        diff_H = int(datetime.now().strftime("%H")) - int(date_time_H)
+                        if diff_H == 0:
+                            date_time_M = x["date_time"].strftime("%M")
+                            diff_M = int(datetime.now().strftime("%M")) - int(date_time_M)
+                            if diff_M == 0:
+                                x["date_submitted"] = "now"
+                            else:
+                                x["date_submitted"] = f"{diff_M} minutes ago"
+                        elif diff_H > 0:
+                            x["date_submitted"] = f"{diff_H} hours ago"
+                            
+                    elif diff==1:
+                        x["date_submitted"] = "yesterday"
+                            
+            for x in requests:
+                date_time = x["date_time"].strftime("%j")
+                diff = int(datetime.now().strftime("%j")) - int(date_time)
+                
+                if diff == 0:
+                    date_time_H = x["date_time"].strftime("%H")
+                    diff_H = int(datetime.now().strftime("%H")) - int(date_time_H)
+                    if diff_H == 0:
+                        date_time_M = x["date_time"].strftime("%M")
+                        diff_M = int(datetime.now().strftime("%M")) - int(date_time_M)
+                        if diff_M == 0:
+                            x["date_submitted"] = "now"
+                        else:
+                            x["date_submitted"] = f"{diff_M} minutes ago"
+                    elif diff_H > 0:
+                        x["date_submitted"] = f"{diff_H} hours ago"
+                        
+                elif diff==1:
+                    x["date_submitted"] = "yesterday"
+            
+            for x in projects:
+                    date_time = x["date_time"].strftime("%j")
+                    diff = int(datetime.now().strftime("%j")) - int(date_time)
+                    
+                    if diff == 0:
+                        date_time_H = x["date_time"].strftime("%H")
+                        diff_H = int(datetime.now().strftime("%H")) - int(date_time_H)
+                        if diff_H == 0:
+                            date_time_M = x["date_time"].strftime("%M")
+                            diff_M = int(datetime.now().strftime("%M")) - int(date_time_M)
+                            if diff_M == 0:
+                                x["date_created"] = "now"
+                            else:
+                                x["date_created"] = f"{diff_M} minutes ago"
+                        elif diff_H > 0:
+                            x["date_creatted"] = f"{diff_H} hours ago"
+                            
+                    elif diff==1:
+                        x["date_created"] = "yesterday"
+
+            
+            return render_template('pages/intern_submissions.html', reports=reports, requests=requests, projects=projects, user_profile=user_profile, personnels=personnels, eqpts=eqpts)
+        else:
+                flash('permission not granted', "danger")
+                return redirect(url_for('login'))
         
     else:
         flash  ('you are not logged in!', "danger")
@@ -984,6 +1582,15 @@ def post_request_form():
         title = request.form.get("title")
         type = request.form.get("type")
         eqpt_id = request.form.get("eqpt_id")
+        
+        if type =="Equipment":
+            eqpt = {
+                "id": eqpt_id,
+                "name": Eqpt_db.get_eqpt_by_id(eqpt_id)["name"] 
+            }
+        else:
+            eqpt = "None"
+            
         quantity = request.form.get("quantity")
         date_from = request.form.get("date_from")
         date_to = request.form.get("date_to")
@@ -1000,23 +1607,36 @@ def post_request_form():
         date = now("%d")
         year = now("%Y")
         date_submitted = "{0} {1}, {2}".format(month, date, year)
+        date_time = datetime.now()
         
         if recipient == "Admin":
             role = "Admin"
-            id = User_db.get_user_by_role(role)["_id"]
+            id = User_db.get_user_by_role_one(role)["_id"]
             
             recipient_dtls = {
                 "position": "Admin",
                 "id": id
             }
+            requested = Request(title, type, eqpt, quantity, date_from, date_to, purpose, sender, recipient_dtls, status, date_submitted, date_time)
+            request_id = Request_db.insert_new(requested)
+            
+            flash("Request submitted successfully!", "success")
+            return redirect(url_for('view_request', request_id=request_id))
+        
         elif recipient == "software":
             stack = "Software"
             id = User_db.get_lead(stack)["_id"]
-            
+             
             recipient_dtls = {
                 "position": "Software",
                 "id": id
             }
+            requested = Request(title, type, eqpt, quantity, date_from, date_to, purpose, sender, recipient_dtls, status, date_submitted, date_time)
+            request_id = Request_db.insert_new(requested)
+            
+            flash("Request submitted successfully!", "success")
+            return redirect(url_for('view_request', request_id=request_id))
+        
         elif recipient == "hardware":
             stack="Hardware" 
             id = User_db.get_lead(stack)["_id"]
@@ -1025,11 +1645,15 @@ def post_request_form():
                 "id": id
             }
         
-        requested = Request(title, type, eqpt_id, quantity, date_from, date_to, purpose, sender, recipient_dtls, status, date_submitted)
-        Request_db.insert_new(requested)
+            requested = Request(title, type, eqpt, quantity, date_from, date_to, purpose, sender, recipient_dtls, status, date_submitted, date_time)
+            request_id = Request_db.insert_new(requested)
+            
+            flash("Request submitted successfully!", "success")
+            return redirect(url_for('view_request', request_id=request_id))
         
-        flash("Request submitted successfully!", "success")
-        return redirect(url_for('all_submissions'))
+        else:
+                flash('permission not granted', "danger")
+                return redirect(url_for('login'))
 
     else:
         flash  ('you are not logged in!', "danger")
@@ -1042,11 +1666,162 @@ def view_request(request_id):
     if "user_id" in session:
         user_profile = User_db.get_user_by_oid(id)
         request = Request_db.get_by_request_id(request_id)
+        eqpts = Eqpt_db.get_all_available_eqpt()
     
-        return render_template('pages/view_request.html', request=request, user_profile=user_profile)
+        return render_template('pages/view_request.html', request=request, user_profile=user_profile, eqpts=eqpts)
     else:
         flash  ('you are not logged in!', "danger")
-        return redirect(url_for('login'))    
+        return redirect(url_for('login')) 
+    
+@app.get('/request/approve/<request_id>')
+def approve_request(request_id):
+    
+    if "user_id" in session:
+        approved = Request_db.approve_request(request_id)
+
+        if approved: 
+            flash('Request approved',"success")
+            return redirect(url_for('view_request', request_id=request_id))
+        else:
+            flash('An error occurred! Try again', "danger")
+            return redirect(url_for('view_request', request_id=request_id))
+    else:
+        flash  ('you are not logged in!', "danger")
+        return redirect(url_for('login')) 
+    
+@app.get('/request/decline/<request_id>')
+def decline_request(request_id):
+    
+    if "user_id" in session:
+        declined = Request_db.decline_request(request_id)
+
+        if declined: 
+            flash('Request declined',"success")
+            return redirect(url_for('view_request', request_id=request_id))
+        else:
+            flash('An error occurred! Try again', "danger")
+            return redirect(url_for('view_request', request_id=request_id))
+    else:
+        flash  ('you are not logged in!', "danger")
+        return redirect(url_for('login')) 
+
+@app.post('/request/edit/<request_id>')
+def edit_request(request_id):
+    user_id = session["user_id"]
+    uid = session["user_uid"]
+    
+    if "user_id" in session:
+        
+        title = request.form.get("title")
+        type = request.form.get("type")
+        eqpt_id = request.form.get("eqpt_id")
+        
+        if type == "Equipment":
+            eqpt = {
+                "id": eqpt_id,
+                "name": Eqpt_db.get_eqpt_by_id(eqpt_id)["name"] 
+            }
+        else:
+            eqpt = "None"
+            
+            
+        quantity = request.form.get("quantity")
+        date_from = request.form.get("date_from")
+        date_to = request.form.get("date_to")
+        purpose = request.form.get("purpose")
+        recipient = request.form.get("recipient")
+        sender = {
+            "_id": user_id,
+            "uid": uid  
+                  
+        }
+        status = "Pending"
+        now = datetime.now().strftime
+        month = now("%B")
+        date = now("%d")
+        year = now("%Y")
+        date_submitted = "{0} {1}, {2}".format(month, date, year)
+        date_time = datetime.now()
+        
+        if recipient == "Admin":
+            role = "Admin"
+            id = User_db.get_user_by_role_one(role)["_id"]
+            
+            recipient_dtls = {
+                "position": "Admin",
+                "id": id
+            }
+            dtls = Request(title, type, eqpt, quantity, date_from, date_to, purpose, sender, recipient_dtls, status, date_submitted, date_time)
+            updated = Request_db.update_request_dtls(request_id,dtls)
+            
+            if updated:
+                flash("Request edited successfully!", "success")
+                return redirect(url_for('view_request', request_id=request_id))
+            else:
+                flash('An error occurred! Try again', "danger")
+                return redirect(url_for('view_request', request_id=request_id))
+
+        elif recipient == "software":
+            stack = "Software"
+            id = User_db.get_lead(stack)["_id"]
+            
+            recipient_dtls = {
+                "position": "Software",
+                "id": id
+            }
+            dtls = Request(title, type, eqpt, quantity, date_from, date_to, purpose, sender, recipient_dtls, status, date_submitted, date_time)
+            updated = Request_db.update_request_dtls(request_id,dtls)
+            if updated:
+                flash("Request edited successfully!", "success")
+                return redirect(url_for('view_request', request_id=request_id))
+            else:
+                flash('An error occurred! Try again', "danger")
+                return redirect(url_for('view_request', request_id=request_id))
+
+        elif recipient == "hardware":
+            stack="Hardware" 
+            id = User_db.get_lead(stack)["_id"]
+            recipient_dtls = {
+                "position": "Hardware",
+                "id": id
+            }
+        
+            dtls = Request(title, type, eqpt, quantity, date_from, date_to, purpose, sender, recipient_dtls, status, date_submitted, date_time)
+            updated = Request_db.update_request_dtls(request_id,dtls)
+
+            if updated:
+                flash("Request edited successfully!", "success")
+                return redirect(url_for('view_request', request_id=request_id))
+            else:
+                flash('An error occurred! Try again', "danger")
+                return redirect(url_for('view_request', request_id=request_id))
+            
+        else:
+                flash('permission not granted', "danger")
+                return redirect(url_for('login'))
+
+    else:
+        flash  ('you are not logged in!', "danger")
+        return redirect(url_for('login'))
+
+@app.get('/delete/request/<request_id>')
+def delete_request(request_id):
+    
+    if "user_id" in session:
+            
+            deleted = Request_db.delete_request(request_id)
+            
+            if deleted:
+                flash ("Request deleted successfully!", "success")
+                return redirect(url_for('all_submissions'))
+            else:
+                flash ('The request was unsuccessful!', "danger")
+                return redirect(url_for('view_request', request_id=request_id))
+                  
+    else:
+        flash  ('you are not logged in!', "danger")
+        return redirect(url_for('login'))
+  
         
 
 @app.post('/submissions/submit/report')
@@ -1070,15 +1845,133 @@ def post_report_form():
         date = now("%d")
         year = now("%Y")
         date_submitted = "{0} {1}, {2}".format(month, date, year)
+        status = "Submitted"
+        date_time = datetime.now()
         
-        
-        
-        report = Report(title, report_no, content, recipient, sender, date_submitted)
-        Report_db.insert_new(report)
+        report = Report(title, report_no, content, recipient, sender, date_submitted, status, date_time)
+        report_id = Report_db.insert_new(report)
         
         flash("Report submitted successfully!", "success")
-        return redirect(url_for('all_submissions'))
+        return redirect(url_for('view_report', report_id=report_id))
 
+    else:
+        flash  ('you are not logged in!', "danger")
+        return redirect(url_for('login'))
+    
+@app.get('/view/report/<report_id>')
+def view_report(report_id):
+    id = session["user_id"]
+    
+    if "user_id" in session:
+        user_profile = User_db.get_user_by_oid(id)
+        report = Report_db.get_by_report_id(report_id)
+    
+        return render_template('pages/view_report.html', report=report, user_profile=user_profile)
+    else:
+        flash  ('you are not logged in!', "danger")
+        return redirect(url_for('login')) 
+    
+@app.get('/report/completed/<report_id>')
+def mark_report_completed(report_id):
+    
+    if "user_id" in session:
+        marked = Report_db.mark_completed(report_id)
+
+        if marked: 
+            flash('Report marked completed',"success")
+            return redirect(url_for('view_report', report_id=report_id))
+        else:
+            flash('An error occurred! Try again', "danger")
+            return redirect(url_for('view_report', report_id=report_id))
+    else:
+        flash  ('you are not logged in!', "danger")
+        return redirect(url_for('login')) 
+    
+@app.get('/report/incomplete/<report_id>')
+def mark_report_incomplete(report_id):
+    
+    if "user_id" in session:
+        marked = Report_db.mark_incomplete(report_id)
+
+        if marked: 
+            flash('Report marked incomplete',"success")
+            return redirect(url_for('view_report', report_id=report_id))
+        else:
+            flash('An error occurred! Try again', "danger")
+            return redirect(url_for('view_report', report_id=report_id))
+    else:
+        flash  ('you are not logged in!', "danger")
+        return redirect(url_for('login'))
+    
+@app.post('/report/feedback/<report_id>') 
+def report_feedback(report_id):
+    
+    if "user_id" in session:
+        feedback = {"feedback": request.form.get("feedback")}
+        submitted = Report_db.report_feedback(report_id, feedback)
+        
+        if submitted: 
+            flash('Feedback sent successfully',"success")
+            return redirect(url_for('view_report', report_id=report_id))
+        else:
+            flash('An error occurred! Try again', "danger")
+            return redirect(url_for('view_report', report_id=report_id))
+    else:
+        flash  ('you are not logged in!', "danger")
+        return redirect(url_for('login'))
+    
+@app.post('/report/edit/<report_id>')
+def edit_report(report_id):
+    user_id = session["user_id"]
+    uid = session["user_uid"]
+    
+    if "user_id" in session:
+        
+        title = request.form.get("title")
+        report_no = request.form.get("report_no")
+        content = request.form.get("content")
+        recipient = request.form.get("recipient")
+        sender = {
+            "_id": user_id,
+            "uid": uid  
+                  
+        }
+        now = datetime.now().strftime
+        month = now("%B")
+        date = now("%d")
+        year = now("%Y")
+        date_submitted = "{0} {1}, {2}".format(month, date, year)
+        status = "Submitted"
+        date_time = datetime.now()
+        
+        dtls = Report(title, report_no, content, recipient, sender, date_submitted, status, date_time)
+        updated = Report_db.update_report_dtls(report_id, dtls)
+        
+        if updated:
+            flash("Report edited successfully!", "success")
+            return redirect(url_for('view_report', report_id=report_id))
+        else:
+            flash('An error occurred! Try again', "danger")
+            return redirect(url_for('view_report', report_id=report_id))
+
+    else:
+        flash  ('you are not logged in!', "danger")
+        return redirect(url_for('login')) 
+
+@app.get('/delete/report/<report_id>')
+def delete_report(report_id):
+    
+    if "user_id" in session:
+            
+            deleted = Report_db.delete_report(report_id)
+            
+            if deleted:
+                flash ("Report deleted successfully!", "success")
+                return redirect(url_for('all_submissions'))
+            else:
+                flash ('The request was unsuccessful!', "danger")
+                return redirect(url_for('view_report', report_id=report_id))
+                  
     else:
         flash  ('you are not logged in!', "danger")
         return redirect(url_for('login'))
@@ -1105,19 +1998,333 @@ def post_project_form():
         month = now("%B")
         date = now("%d")
         year = now("%Y")
-        date_submitted = "{0} {1}, {2}".format(month, date, year)
+        date_created = "{0} {1}, {2}".format(month, date, year)
+        deadline_str = request.form.get("deadline")
+        deadline = datetime.strptime(deadline_str, '%Y-%m-%dT%H:%M')
+        date_time = datetime.now()
         
-        project = Project(topic, focus, objectives, recipient, sender, date_submitted)
-        Project_db.insert_new(project)
+        if recipient=="Software" or recipient=="Hardware":
+            recipient_dtls = {
+                "category":"all",
+                "recipient": recipient,
+                "name": "All stack members"
+            }
+        else:
+            recipient_dtls = {
+                "category":"one",
+                "recipient": str(recipient),
+                "name": User_db.get_user_by_oid(recipient)["uid"]
+            }
+        
+        project = Project(topic, focus, objectives, recipient_dtls, sender, date_created, deadline, date_time)
+        project_id = Project_db.insert_new(project)
         
         flash("Project created successfully!", "success")
-        return redirect(url_for('all_submissions'))
+        return redirect(url_for('view_project', project_id=project_id))
 
     else:
         flash  ('you are not logged in!', "danger")
         return redirect(url_for('login'))
 
 
+@app.get('/view/project/<project_id>')
+def view_project(project_id):
+    id = session["user_id"]
+    role = session["user_role"]
+    stack = session["stack"]
+    
+    if "user_id" in session:
+        user_profile = User_db.get_user_by_oid(id)
+        project = Project_db.get_by_project_id(project_id)
+        completed = int(0)
+        
+        if "submissions" in project:
+            for x in project["submissions"]:
+                if x["id"]==id and x["status"]=="Completed":
+                    completed = completed + 1
+                    break
+        if completed > 0:
+            display = "None"
+        else:
+            display = "block"
+           
+                
+        if role=="Admin":
+            personnels = User_db.get_all_users()
+            return render_template('pages/view_project.html', project=project, user_profile=user_profile, personnels=personnels, id=id)
+        
+        elif role=="Lead":
+            personnels = User_db.get_users_by_stack(stack)
+            return render_template('pages/view_project.html', project=project, user_profile=user_profile, personnels=personnels, id=id, display=display)
+        else:
+            return render_template('pages/view_project.html', project=project, user_profile=user_profile, id=id, display=display)
+    else:
+        flash  ('you are not logged in!', "danger")
+        return redirect(url_for('login')) 
+    
+@app.get('/project/completed/<project_id>/<id>')
+def mark_project_completed(project_id, id):
+    
+    if "user_id" in session:
+        project = Project_db.get_by_project_id(project_id)["submissions"]
+        for x in project:
+            if x["id"]==id:
+                x["status"] = "Completed"
+                project[project.index(x)] = x
+                break
+        marked = Project_db.mark_project(project_id, project)
+    
+
+        if marked: 
+            flash('Project marked completed',"success")
+            return redirect(url_for('project_submissions', project_id=project_id))
+        else:
+            flash('An error occurred! Try again', "danger")
+            return redirect(url_for('project_submissions', project_id=project_id))
+
+    else:
+        flash  ('you are not logged in!', "danger")
+        return redirect(url_for('login')) 
+    
+@app.get('/project/incomplete/<project_id>/<id>') 
+def mark_project_incomplete(project_id, id):
+    
+    if "user_id" in session:
+        project = Project_db.get_by_project_id(project_id)["submissions"]
+        for x in project:
+            if x["id"]==id:
+                x["status"] = "Incomplete"
+                project[project.index(x)] = x
+                break
+        marked = Project_db.mark_project(project_id, project)
+    
+
+        if marked: 
+            flash('Project marked incomplete',"success")
+            return redirect(url_for('project_submissions', project_id=project_id))
+        else:
+            flash('An error occurred! Try again', "danger")
+            return redirect(url_for('project_submissions', project_id=project_id))
+    else:
+        flash  ('you are not logged in!', "danger")
+        return redirect(url_for('login'))
+
+@app.post('/project/edit/<project_id>')
+def edit_project(project_id):
+    user_id = session["user_id"]
+    uid = session["user_uid"]
+    
+    if "user_id" in session:
+        
+        topic = request.form.get("topic")
+        focus = request.form.get("focus")
+        objectives = request.form.get("objectives")
+        recipient = request.form.get("recipient")
+        deadline_str = request.form.get("deadline")
+        deadline = datetime.strptime(deadline_str, '%Y-%m-%dT%H:%M')
+        date_time = datetime.now()
+        
+        sender = {
+            "_id": user_id,
+            "uid": uid  
+                  
+        }
+        now = datetime.now().strftime
+        month = now("%B")
+        date = now("%d")
+        year = now("%Y")
+        date_submitted = "{0} {1}, {2}".format(month, date, year)
+        
+        if recipient=="Software" or recipient=="Hardware":
+            recipient_dtls = {
+                "category":"all",
+                "recipient": recipient,
+                "name": "All stack members"
+            }
+        else:
+            recipient_dtls = {
+                "category":"one",
+                "recipient": str(recipient),
+                "name": User_db.get_user_by_oid(recipient)["uid"]
+            }
+        
+        dtls = Project(topic, focus, objectives, recipient_dtls, sender, date_submitted, deadline, date_time)
+        updated = Project_db.update_project_dtls(project_id, dtls)
+        
+        if updated:
+            flash("Project details edited successfully!", "success")
+            return redirect(url_for('view_project', project_id=project_id))
+        else:
+            flash('An error occurred! Try again', "danger")
+            return redirect(url_for('view_project', project_id=project_id))
+
+    else:
+        flash  ('you are not logged in!', "danger")
+        return redirect(url_for('login')) 
+    
+@app.post('/project/submit/<project_id>')
+def submit_project(project_id):
+    uid = session["user_uid"]
+    id = session["user_id"]
+    
+    if "user_id" in session:
+        project = request.files["file"]
+        filename = secure_filename(project.filename)
+        filepath = generate.file_id()
+        if project and AllowedExtension.files(filename):
+           
+            
+            if "submissions" in Project_db.get_by_project_id(project_id):
+                submitted = Project_db.get_by_project_id(project_id)["submissions"]
+                now = datetime.now().strftime
+                month = now("%B")
+                date = now("%d")
+                year = now("%Y")
+                date_submitted = "{0} {1}, {2}".format(month, date, year)
+                
+                for x in submitted:
+                    if x["id"]==id:
+                        submitted.remove(x)
+                        break
+                submitted.append({
+                    "id": id,
+                    "uid": uid,
+                    "project_id": project_id,
+                    "file_name": filename,
+                    "file_path": filepath,
+                    "status": "submitted",
+                    "date_submitted": date_submitted,
+                    "datetime": datetime.now()
+                })
+                no_submissions = len(submitted)
+                uploaded = Project_db.submit_project(project_id, submitted, no_submissions)
+
+                if uploaded:
+                    project.save(os.path.join(app.config['PROJECT_FOLDER'], filepath))
+                    flash('Project submitted successfully',"success")
+                    return redirect(url_for('view_project', project_id=project_id))
+                else:
+                    flash('An error occurred! Try again', "danger")
+                    return redirect(url_for('view_project', project_id=project_id))
+            else:
+                now = datetime.now().strftime
+                month = now("%B")
+                date = now("%d")
+                year = now("%Y")
+                date_submitted = "{0} {1}, {2}".format(month, date, year)
+                project_submitted = [{
+                    "id": id,
+                    "uid": uid,
+                    "project_id": project_id,
+                    "file_name": filename,
+                    "file_path": filepath,
+                    "status": "submitted",
+                    "date_submitted": date_submitted,
+                    "datetime": datetime.now()  
+                }]
+                no_submissions = int(1)
+                
+                uploaded = Project_db.submit_project(project_id, project_submitted, no_submissions)
+
+                if uploaded: 
+                    project.save(os.path.join(app.config['PROJECT_FOLDER'], filepath))
+                    flash('Project submitted successfully',"success")
+                    return redirect(url_for('view_project', project_id=project_id))
+                else:
+                    flash('An error occurred! Try again', "danger")
+                    return redirect(url_for('view_project', project_id=project_id))
+        else:
+            flash('Invalid file format! Try again', "danger")
+            return redirect(url_for('view_project', project_id=project_id))
+        
+    else:
+        flash  ('you are not logged in!', "danger")
+        return redirect(url_for('login'))
+
+
+@app.get('/project/submissions/<project_id>')
+def project_submissions(project_id):
+    user_id = session["user_id"]
+    user_profile = User_db.get_user_by_oid(user_id)
+    
+    if "user_id" in session:
+        if "submissions" in Project_db.get_by_project_id(project_id):
+            submissions = Project_db.get_by_project_id(project_id)["submissions"]
+            topic = Project_db.get_by_project_id(project_id)["topic"]
+
+            
+            return render_template('pages/project_submissions.html', details=submissions, user_profile=user_profile, topic=topic)
+        else:
+            flash('No submissions made yet', "info")
+            return redirect(url_for('view_project', project_id=project_id))
+    else:
+        flash  ('you are not logged in!', "danger")
+        return redirect(url_for('login'))
+
+
+@app.get('/project/submissions/download/<project_id>/<id>')
+def download_project_submissions(project_id, id):
+    #user_id = session["user_id"]
+    #user_profile = User_db.get_user_by_oid(user_id)
+    
+    if "user_id" in session:
+
+        submissions = Project_db.get_by_project_id(project_id)["submissions"]
+        app.logger.info(submissions)
+        
+        for x in submissions:
+            if x["id"]==id:
+                upload = x
+                break
+        
+        return send_file(os.path.join(app.config['PROJECT_FOLDER'], upload["file_path"]), download_name=upload["file_name"], as_attachment=True)
+
+    else:
+        flash  ('you are not logged in!', "danger")
+        return redirect(url_for('login'))
+    
+@app.get('/project/send/feedback/<project_id>/<id>')
+def send_feedback(project_id, id):
+    user_id = session["user_id"]
+    user_profile = User_db.get_user_by_oid(user_id)
+    
+    if "user_id" in session:
+        project = Project_db.get_by_project_id(project_id)
+        submissions = project["submissions"]
+        
+        for x in submissions:
+            if x["id"]==id:
+                submission=x
+                break
+        
+        return render_template('pages/send_feedback.html', user_profile=user_profile, project=project, submission=submission)
+
+    else:
+        flash  ('you are not logged in!', "danger")
+        return redirect(url_for('login'))
+    
+@app.post('/submit/feedback/<project_id>/<id>') 
+def submit_feedback(project_id, id):
+    
+    if "user_id" in session:
+        submissions = Project_db.get_by_project_id(project_id)["submissions"]
+        
+        for  x in submissions:
+            if x["id"]==id:
+                x["feedback"] = request.form.get("feedback")
+                
+        submitted = Project_db.mark_project(project_id, submissions)
+    
+
+        if submitted: 
+            flash('Feedback sent successfully',"success")
+            return redirect(url_for('project_submissions', project_id=project_id))
+        else:
+            flash('An error occurred! Try again', "danger")
+            return redirect(url_for('project_submissions', project_id=project_id))
+    else:
+        flash  ('you are not logged in!', "danger")
+        return redirect(url_for('login'))
 
 
 
