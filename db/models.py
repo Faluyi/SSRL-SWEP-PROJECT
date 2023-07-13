@@ -2,10 +2,12 @@ from pymongo import MongoClient
 from bson.objectid import ObjectId 
 import string, random
 
-client = MongoClient('mongodb://localhost:27017/')
+#uri = "mongodb+srv://Faluyi:Akindele@cluster0.vbgemiy.mongodb.net/?retryWrites=true&w=majority"
+uri = "mongodb://localhost:27017"
+client = MongoClient(uri)
 db = client['SSRL_DB']
 Users = db['Users']
-Tasks = db['Tasks']
+Todos = db['Todos']
 Eqpts = db['Equipments']
 lost_eqpts = db["Lost_eqpt"]
 Requests = db["Requests"]
@@ -61,26 +63,29 @@ class Userdb:
         return self.collection.find({"stack":stack}).limit(4)
     
     
-class Task_db:
+class Todosdb:
     def __init__(self) -> None:
-        self.collection = Tasks
+        self.collection = Todos
         
-    def create_task(self, **kwargs):
-        return self.collection.insert_one(kwargs.__dict__)
+    def create_todo(self, dtls):
+        return self.collection.insert_one(dtls).inserted_id
     
-    def update_task(self, **kwargs):
-        return self.collection.update_one({"_id":kwargs["task_id"]},{"$set":kwargs.__dict__}).modified_count>0
+    def update_todo(self, todo_id, dtls):
+        return self.collection.update_one({"_id":ObjectId(todo_id)},{"$set":dtls}).modified_count>0
 
-    def delete_task(self, task_id):
-        return self.collection.delete_one({"_id":task_id}).deleted_count>0
+    def delete_todo(self, todo_id):
+        return self.collection.delete_one({"_id":ObjectId(todo_id)}).deleted_count>0
     
-    def get_tasks_by_stack(self, user_stack):
-        return self.collection.find({"stack":user_stack})
+    def get_specific_todo(self, user_id, todo_id):
+        return self.collection.find_one({"_id":ObjectId(todo_id), "uid":user_id})
     
-    def get_task_by_task_id(self, task_id):
-        return self.collection.find_one({"_id":task_id})
+    def get_todos_by_user_id(self, user_id):
+        return self.collection.find({"uid":user_id}).sort("date_time")
     
-    def get_all_tasks(self):
+    def get_todos_by_user_id_limited(self, user_id):
+        return self.collection.find({"uid":user_id}).sort("date_time")
+    
+    def get_all_todos(self):
         return self.collection.find()
     
     
@@ -138,19 +143,19 @@ class Requestdb:
         return self.collection.insert_one(request.__dict__).inserted_id
     
     def get_all(self):
-        return self.collection.find().sort("date_time")
+        return self.collection.find().sort("date_time", -1)
     
     def get_by_request_id(self, _id):
         return self.collection.find_one({"_id":ObjectId(_id)})
 
     def get_by_sender(self, _id, uid):
-        return self.collection.find({"sender":{"_id":_id, "uid":uid}})
+        return self.collection.find({"sender":{"_id":_id, "uid":uid}}).sort("date_time", -1)
     
     def get_by_sender_limited(self, _id, uid):
         return self.collection.find({"sender":{"_id":_id, "uid":uid}}).sort("date_time", -1).limit(3)
     
     def get_by_recipient(self, position, _id):
-        return self.collection.find({"recipient":{"position":position, "id":ObjectId(_id)}})
+        return self.collection.find({"recipient":{"position":position, "id":ObjectId(_id)}}).sort("date_time", -1)
     
     def get_by_recipient_limited(self, position, user_id):
         return self.collection.find({"recipient":{"position":position, "id":ObjectId(user_id)}}).sort("date_time", -1).limit(3)
@@ -176,19 +181,19 @@ class Reportdb:
         return self.collection.insert_one(request.__dict__).inserted_id 
     
     def get_all(self):
-        return self.collection.find().sort("date_time")
+        return self.collection.find().sort("date_time", -1)
     
     def get_by_report_id(self, _id):
         return self.collection.find_one({"_id":ObjectId(_id)})
 
     def get_by_sender(self, _id, uid):
-        return self.collection.find({"sender":{"_id":_id, "uid":uid}})
+        return self.collection.find({"sender":{"_id":_id, "uid":uid}}).sort("date_time", -1)
     
     def get_by_sender_limited(self, _id, uid):
         return self.collection.find({"sender":{"_id":_id, "uid":uid}}).sort("date_time", -1).limit(3)
     
     def get_by_recipient(self, position):
-        return self.collection.find({"recipient":position})
+        return self.collection.find({"recipient":position}).sort("date_time", -1)
     
     def get_by_recipient_limited(self, position):
         return self.collection.find({"recipient":position}).sort("date_time", -1).limit(3)

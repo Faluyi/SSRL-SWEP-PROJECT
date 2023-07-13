@@ -1,4 +1,4 @@
-from flask import Flask, session, render_template, redirect, url_for, request, flash, send_file
+from flask import Flask, session, render_template, redirect, url_for, request, flash, send_file, jsonify
 from flask_bcrypt import Bcrypt, check_password_hash, generate_password_hash
 from flask_mail import Mail, Message
 from db.models import *
@@ -7,6 +7,9 @@ from werkzeug.utils import secure_filename
 from io import BytesIO
 import os 
 from properties import *
+import cloudinary
+from cloudinary import uploader
+import urllib.request
 
 User_db = Userdb()
 Eqpt_db = Eqptdb()
@@ -15,6 +18,7 @@ Inventory_db = Inventorydb()
 Request_db = Requestdb()
 Report_db = Reportdb()
 Project_db = Projectdb()
+Todos_db = Todosdb()
 
 UPLOAD_FOLDER = 'static/images'
 PROJECT_FOLDER = 'submissions/projects'
@@ -24,7 +28,7 @@ app = Flask(__name__)
 
 bcrypt = Bcrypt(app)
 
-app.secret_key = "SSRL"
+app.secret_key = os.urandom(32)
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['PROJECT_FOLDER'] = PROJECT_FOLDER
@@ -34,6 +38,13 @@ app.config['MAIL_USERNAME'] = 'smartsystemlaboratory@gmail.com'
 app.config['MAIL_PASSWORD'] = email_pswd
 app.config['MAIL_USE_TLS'] = False
 app.config['MAIL_USE_SSL'] = True
+
+cloudinary.config( 
+  cloud_name = "diaownipw", 
+  api_key = "229453716768545", 
+  api_secret = "vj6O2rC0oYYFTXuOT_n-VSAlvDo" ,
+  secure = True
+)
 
 mail = Mail(app)
 
@@ -57,34 +68,39 @@ def logout():
     
 @app.get('/forgot/password')
 def forgot_password():
-
+    session["confirmed"]="false"
     return render_template('forms/forgot_password.html')
 
 @app.post('/confirm/credentials')
 def confirm_credentials():
-    uid = request.form.get("uid")
-    email = request.form.get("email")
-    user = User_db.get_user_by_uid(uid)
-    if user:
-        if user["email"]==email:
-            otp = generate.OTP()
-            try:
-                msg = Message('SSRL password recovery', sender = 'smartsystemlaboratory@gmail.com', recipients = [email])
-                msg.body = f"Enter the OTP below into the requested field \nThe OTP will expire in 24 hours\n\nOTP: {otp}  \n\n\nFrom SSRL Team"
-                
-                mail.send(msg)
-                
-                session["uid"]=uid
-                session["otp"]=otp
-                flash("Check your email for the OTP","info")
-                return render_template('forms/confirm_otp.html')
-                
-            except:
-                flash("Unable to recover your account at the moment! Please confirm that the inputed email is correct or check your internet connection.", "danger")
+    status = session["confirmed"]
+    
+    if status == "false":
+        uid = request.form.get("uid")
+        email = request.form.get("email")
+        user = User_db.get_user_by_uid(uid)
+        if user:
+            if user["email"]==email:
+                otp = generate.OTP()
+                try:
+                    msg = Message('SSRL password recovery', sender = 'smartsystemlaboratory@gmail.com', recipients = [email])
+                    msg.body = f"Enter the OTP below into the requested field \nThe OTP will expire in 24 hours\n\nOTP: {otp}  \n\n\nFrom SSRL Team"
+                    
+                    mail.send(msg)
+                    
+                    session["uid"]=uid
+                    session["otp"]=otp
+                    flash("Check your email for the OTP","info")
+                    return render_template('forms/confirm_otp.html')
+                    
+                except:
+                    flash("Unable to recover your account at the moment! Please confirm that the inputed email is correct or check your internet connection.", "danger")
+                    return redirect(url_for('forgot_password'))
+            else:
+                flash("Please confirm that the inputed email is correct!", "danger")
                 return redirect(url_for('forgot_password'))
-        else:
-            flash("Please confirm that the inputed email is correct!", "danger")
-            return redirect(url_for('forgot_password'))
+    elif status == "true":
+        return redirect(url_for('forgot_password'))
     
     else:
         flash("Please confirm that the inputed ID is correct!", "danger")
@@ -93,15 +109,20 @@ def confirm_credentials():
 
 @app.post('/confirm/otp')
 def confirm_otp():
+    status = session["confirmed"]
+    
+    if status == "false":
         input = request.form.get("otp")
         otp = session["otp"]
         if input==otp:
             session.pop("otp",None)
+            session["confirmed"] = "true"
             return render_template('forms/change_password.html')
         else:
             flash("Invalid OTP!", "danger")
             return render_template('forms/confirm_otp,html')
-    
+    elif status == "true":
+        return redirect(url_for('forgot_password'))
 
 @app.post('/change/password')
 def change_password():
@@ -133,117 +154,12 @@ def change_password():
             flash("Unmatching password input! Unable to update your password", "danger")
             return render_template('forms/change_password.html')
 
-            
-
-
-        
-    
-@app.get('/home/me')
-def home():
-    if "user_id" in session:
-        user_id = session["user_id"]
-        uid = session["user_uid"]
-        user_role = session["user_role"]
-        stack = session["stack"]
-        user_profile = User_db.get_user_by_oid(user_id)
-        
-        now = datetime.now().strftime
-        
-        if now("%p") == "AM":
-            meridian = "morning"
-            
-        elif int(now("%H")) >= int(12) and int(now("%H")) < int(16):
-            meridian = "afternoon"
-        
-        else:
-            meridian = "evening"    
-            
-        date = {
-            "day" : now("%A"),
-            "month" : now("%B"),
-            "date" : now("%d"),
-            "meridian" : meridian
-        }
-        
-        if user_role=="Admin":
-            members = list(User_db.get_all_users_limited())
-            reports = list(Report_db.get_by_recipient_limited(position=user_role))
-            requests = list(Request_db.get_by_recipient_limited(position=user_role, user_id=user_id))
-            projects = list(Project_db.get_by_sender_limited(user_id, uid))
-            personnels = list(User_db.get_all_users())
-
-            return render_template("pages/home.html", user_profile=user_profile, date=date, members=members, reports=reports, requests=requests, projects=projects, personnels=personnels)
-            
-        elif user_role == "Intern":
-            reports =list(Report_db.get_by_sender(user_id, uid))
-            requests = list(Request_db.get_by_sender(user_id, uid))
-            projects = []
-            
-            project_all = list(Project_db.get_by_recipient_dtls(category="all", recipient=stack, name="All stack members"))
-            for project in project_all:
-                projects.append(project)
-                
-            project_one = list(Project_db.get_by_recipient_dtls(category="one", recipient=user_id, name=uid))
-            for project in project_one:
-                projects.append(project)
-                
-            projects.sort(reverse=True, key=sortFunc)
-                
-            members = list(User_db.get_users_by_stack_limited(stack))
-            return render_template("pages/home.html", user_profile=user_profile, date=date, members=members, reports=reports, requests=requests, projects=projects)
-        
-        elif user_role == "Lead":
-            reports =list(Report_db.get_by_sender(user_id, uid))
-            requests = list(Request_db.get_by_sender(user_id, uid))
-            projects = list(Project_db.get_by_recipient_dtls(category="one", recipient=user_id, name=uid))
-                
-            members = list(User_db.get_users_by_stack_limited(stack))
-            return render_template("pages/home.html", user_profile=user_profile, date=date, members=members, reports=reports, requests=requests, projects=projects)
-        
-        else:
-            flash("permission not granted!", "danger")
-            return redirect(url_for('login'))
-        
-    else:
-        flash  ('you are not logged in!', "danger")
-        return redirect(url_for('login'))
-
-        
-@app.post('/user/authenticate')
-def authenticate_user():
-    user_uid = request.form.get("user_id")
-    pwd = request.form.get("pwd")
-    user_profile = User_db.get_user_by_uid(user_uid)
-    app.logger.info(user_uid)
-    app.logger.info(user_profile)
-    
-    
-    
-    if user_profile:
-        authenticated = check_password_hash(user_profile["hashed_pwd"], pwd)
-        if authenticated is True:
-            session["user_uid"] = user_uid
-            session["user_id"] = str(user_profile["_id"])
-            session["user_role"] = user_profile["role"]
-            session["stack"] = user_profile["stack"]
-            fullname = user_profile["fullname"]
-            
-            flash (f"Welcome! {fullname}", "success")
-            return redirect(url_for('home'))
-        else:
-            flash("Invalid password", "danger")
-            return redirect(url_for("login"))
-        
-    else:
-        flash("Invalid log in ID", "danger")
-        return redirect(url_for('login'))
-
-    
 @app.post('/Admin/create/user')
 def create_user():
-    user_role = session["user_role"]
     
     if "user_id" in session:
+        user_role = session["user_role"]
+        
         if user_role == "Admin":
         
             firstname = request.form.get("firstname")
@@ -260,7 +176,7 @@ def create_user():
             phone_num = "NIL"
             email = request.form.get("email")
             mentor_id = "NIL"
-            avatar = "person.svg"
+            avatar = "https://res.cloudinary.com/diaownipw/image/upload/v1687873502/smart_app/avatars/zeaqhw6su6xkchl1o4im.svg"
             task_id = "NIL"
             bio = "NIL"
             location = "NIL"
@@ -295,14 +211,132 @@ def create_user():
         flash  ('you are not logged in!', "danger")
         return redirect(url_for('login'))
 
+            
+@app.post('/user/authenticate')
+def authenticate_user():
+    user_uid = request.form.get("user_id")
+    pwd = request.form.get("pwd")
+    user_profile = User_db.get_user_by_uid(user_uid)
+    app.logger.info(user_uid)
+    app.logger.info(user_profile)
+    
+    
+    
+    if user_profile:
+        authenticated = check_password_hash(user_profile["hashed_pwd"], pwd)
+        if authenticated is True:
+            session["user_uid"] = user_uid
+            session["user_id"] = str(user_profile["_id"])
+            session["user_role"] = user_profile["role"]
+            session["stack"] = user_profile["stack"]
+            fullname = user_profile["fullname"]
+            
+            flash (f"Welcome! {fullname}", "success")
+            return redirect(url_for('home'))
+        else:
+            flash("Invalid password", "danger")
+            return redirect(url_for("login"))
+        
+    else:
+        flash("Invalid log in ID", "danger")
+        return redirect(url_for('login'))
+
+        
+    
+@app.get('/home/me')
+def home():
+    if "user_id" in session:
+        user_id = session["user_id"]
+        uid = session["user_uid"]
+        user_role = session["user_role"]
+        stack = session["stack"]
+        user_profile = User_db.get_user_by_oid(user_id)
+        todos = list(Todos_db.get_todos_by_user_id_limited(user_id))
+        all_todos = list(Todos_db.get_todos_by_user_id(user_id))
+        
+        now = datetime.now().strftime
+        
+        if now("%p") == "AM":
+            meridian = "morning"
+            
+        elif int(now("%H")) >= int(12) and int(now("%H")) < int(16):
+            meridian = "afternoon"
+        
+        else:
+            meridian = "evening"  
+            
+        taskCompleted = 0
+        for td in all_todos:
+            if td["completed"]==True:
+                if (td["date_time"]).strftime("%U")==datetime.now().strftime("%U"):
+                        taskCompleted = int(taskCompleted) + 1
+                else:
+                    continue  
+            else:
+                continue
+            
+        date = {
+            "day" : now("%A"),
+            "month" : now("%B"),
+            "date" : now("%d"),
+            "meridian" : meridian,
+            "taskCompleted": taskCompleted
+        }
+        
+        if user_role=="Admin":
+            members = list(User_db.get_all_users_limited())
+            reports = list(Report_db.get_by_recipient_limited(position=user_role))
+            requests = list(Request_db.get_by_recipient_limited(position=user_role, user_id=user_id))
+            projects = list(Project_db.get_by_sender_limited(user_id, uid))
+            personnels = list(User_db.get_all_users())
+
+            return render_template("pages/home.html", user_profile=user_profile, date=date, members=members, reports=reports, requests=requests, projects=projects, personnels=personnels, todos=todos)
+            
+        elif user_role == "Intern":
+            reports =list(Report_db.get_by_sender(user_id, uid))
+            requests = list(Request_db.get_by_sender(user_id, uid))
+            projects = []
+            
+            project_all = list(Project_db.get_by_recipient_dtls(category="all", recipient=stack, name="All stack members"))
+            for project in project_all:
+                projects.append(project)
+                
+            project_one = list(Project_db.get_by_recipient_dtls(category="one", recipient=user_id, name=uid))
+            for project in project_one:
+                projects.append(project)
+                
+            projects.sort(reverse=True, key=sortFunc)
+                
+            members = list(User_db.get_users_by_stack_limited(stack))
+            return render_template("pages/home.html", user_profile=user_profile, date=date, members=members, reports=reports, requests=requests, projects=projects, todos=todos)
+        
+        elif user_role == "Lead":
+            reports =list(Report_db.get_by_sender(user_id, uid))
+            requests = list(Request_db.get_by_sender(user_id, uid))
+            projects = list(Project_db.get_by_recipient_dtls(category="one", recipient=user_id, name=uid))
+                
+            members = list(User_db.get_users_by_stack_limited(stack))
+            return render_template("pages/home.html", user_profile=user_profile, date=date, members=members, reports=reports, requests=requests, projects=projects, todos=todos)
+        
+        else:
+            flash("permission not granted!", "danger")
+            return redirect(url_for('login'))
+        
+    else:
+        flash  ('you are not logged in!', "danger")
+        return redirect(url_for('login'))
+
+
+
 @app.get('/view/members' )
 def view_members():
-    user_role = session["user_role"]
-    stack = session["stack"]
-    id = session["user_id"]
-    user_profile = User_db.get_user_by_oid(id)
+    
     
     if "user_id" in session:
+        user_role = session["user_role"]
+        stack = session["stack"]
+        id = session["user_id"]
+        user_profile = User_db.get_user_by_oid(id)
         if user_role=="Admin":
             softlead = []
             hardlead= []
@@ -342,12 +376,12 @@ def view_members():
 
 @app.get('/show/profile/<requested_id>')
 def show_user_profile(requested_id):
-    user_role = session["user_role"]
-    stack = session["stack"]
-    current_user_id = session["user_id"]
-    user_profile = User_db.get_user_by_oid(current_user_id)
-    
     if "user_id" in session:
+        user_role = session["user_role"]
+        stack = session["stack"]
+        current_user_id = session["user_id"]
+        user_profile = User_db.get_user_by_oid(current_user_id)
+        
         requested_profile = User_db.get_user_by_oid(requested_id)
         if user_role == "Admin" or (user_role== "Lead" and stack==requested_profile["stack"]):
             
@@ -363,8 +397,8 @@ def show_user_profile(requested_id):
     
 @app.get('/view/profile/me')
 def view_profile_me():
-    current_user_id = session["user_id"]
     if "user_id" in session:
+        current_user_id = session["user_id"]
         requested_profile = User_db.get_user_by_oid(current_user_id)
         return render_template('pages/view_profile.html', user_profile=requested_profile, current_uid=current_user_id)            
     else:
@@ -373,44 +407,52 @@ def view_profile_me():
 
 @app.post('/user/edit/profile')
 def user_edit_profile():
-    user_id = session["user_id"]
-
+    
     if "user_id" in session:
-        
-            avatar = request.files['avatar']
-            phone_num = request.form.get("phone_num")
-            #email = request.form.get("email")
-            bio = request.form.get("bio")
-            location = request.form.get("location")
-            bday = request.form.get("bday")
-            filename = secure_filename(avatar.filename)
-            if avatar and AllowedExtension.images(filename):
+        user_id = session["user_id"]
+        avatar = request.files['avatar']
+        phone_num = request.form.get("phone_num")
+        bio = request.form.get("bio")
+        location = request.form.get("location")
+        bday = request.form.get("bday")
+        if avatar and AllowedExtension.images(secure_filename(avatar.filename)):
+
+            try: 
+                uploaded = cloudinary.uploader.upload(avatar, folder="smart_app/avatars", resource_type="image")
+            
+                app.logger.info(uploaded)
+                if "secure_url" in uploaded:
+                    filename = uploaded["secure_url"]
+                    dtls = updateUser(filename, phone_num, bio, location, bday)
+                    
+                    updated = User_db.update_user_profile_by_oid(user_id, dtls)
                 
-                dtls = updateUser(filename, phone_num, bio, location, bday)
-                
-                updated = User_db.update_user_profile_by_oid(user_id, dtls)
-                
-                if updated:
-                    avatar.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                    flash("profile updated successfully", "success")
-                    return redirect(url_for('view_profile_me'))
+                    if updated:
+                        flash("profile updated successfully", "success")
+                        return redirect(url_for('view_profile_me'))
+                    else:
+                        flash("profile update unsuccessful!", "danger")
+                        return redirect(url_for('view_profile_me'))
                 else:
-                    flash("profile update unsuccessful!", "danger")
+                    flash("image upload error!", "danger")
                     return redirect(url_for('view_profile_me'))
-                
+            except:
+                flash("Unable to update your profile at the moment! Please make sure you have a strong internet connection", "danger")
+                return redirect(url_for('view_profile_me'))
+            
+        else:
+            user_profile = User_db.get_user_by_oid(user_id)
+            filename = user_profile["avatar"]
+            dtls = updateUser(filename, phone_num, bio, location, bday)
+            
+            updated = User_db.update_user_profile_by_oid(user_id, dtls)
+            
+            if updated:
+                flash("profile updated successfully", "success")
+                return redirect(url_for('view_profile_me'))
             else:
-                user_profile = User_db.get_user_by_oid(user_id)
-                filename = user_profile["avatar"]
-                dtls = updateUser(filename, phone_num, bio, location, bday)
-                
-                updated = User_db.update_user_profile_by_oid(user_id, dtls)
-                
-                if updated:
-                    flash("profile updated successfully", "success")
-                    return redirect(url_for('view_profile_me'))
-                else:
-                    flash("profile update unsuccessful!", "danger")
-                    return redirect(url_for('view_profile_me'))
+                flash("profile update unsuccessful!", "danger")
+                return redirect(url_for('view_profile_me'))
     else:
         flash  ('you are not logged in!', "danger")
         return redirect(url_for('login'))
@@ -418,9 +460,9 @@ def user_edit_profile():
             
 @app.post('/admin/edit/profile/<edit_id>')
 def admin_edit_profile(edit_id):
-    user_role = session["user_role"]
-    user_id = session["user_id"]
     if "user_id" in session:
+        user_role = session["user_role"]
+        user_id = session["user_id"]
         
         if user_role=="Admin" and edit_id == user_id:
                 
@@ -432,7 +474,6 @@ def admin_edit_profile(edit_id):
                 stack = request.form.get("stack")
                 niche = request.form.get("niche")
                 role = request.form.get("role")
-                #mentor_id = request.form.get("mentor_id")
                 avatar = request.files['avatar']
                 phone_num = request.form.get("phone_num")
                 email = request.form.get("email")
@@ -442,22 +483,31 @@ def admin_edit_profile(edit_id):
 
                 if profile["firstname"]==firstname:
                     uid = profile["uid"]
-                    
-                    
-                    filename = secure_filename(avatar.filename)
-                    if avatar and AllowedExtension.images(filename):
-                        dtls = updateAdmin(firstname, surname, fullname, uid, stack, niche, role, filename, phone_num, email, bio, location, bday)
+                                        
+                    if avatar and AllowedExtension.images(secure_filename(avatar.filename)):
+                        try:
+                            uploaded = cloudinary.uploader.upload(avatar, folder="smart_app/avatars", resource_type="image")
+                            
+                            if "secure_url" in uploaded:
+                                filename = uploaded["secure_url"]
+                                dtls = updateAdmin(firstname, surname, fullname, uid, stack, niche, role, filename, phone_num, email, bio, location, bday)
 
-                        updated = User_db.update_user_profile_by_oid(user_id, dtls)
+                                updated = User_db.update_user_profile_by_oid(user_id, dtls)
+                            
+                                if updated:
+                                    flash("profile updated successfully", "success")
+                                    return redirect(url_for('view_profile_me'))
+                                else:
+                                    flash("profile update unsuccessful!", "danger")
+                                    return redirect(url_for('view_profile_me'))
+                            else:
+                                flash("image upload error!", "danger")
+                                return redirect(url_for('view_profile_me'))
                     
-                        if updated:
-                            avatar.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                            flash("profile updated successfully", "success")
+                        except:
+                            flash("Unable to update your profile at the moment! Please make sure you have a strong internet connection", "danger")
                             return redirect(url_for('view_profile_me'))
-                        else:
-                            flash("profile update unsuccessful!", "danger")
-                            return redirect(url_for('view_profile_me'))
-                    
+                                
                     else:
                         user_profile = User_db.get_user_by_oid(user_id)
                         filename = user_profile["avatar"]
@@ -476,19 +526,28 @@ def admin_edit_profile(edit_id):
                 else:
                     uid = generate.user_id(firstname)
                     
-                    filename = secure_filename(avatar.filename)
-                    if avatar and AllowedExtension.images(filename):
-                        dtls = updateAdmin(firstname, surname, fullname, uid, stack, niche, role, filename, phone_num, email, bio, location, bday)
-
-                        updated = User_db.update_user_profile_by_oid(user_id, dtls)
-                        if updated:
-                            avatar.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                            flash("profile updated successfully,", "success")
-                            return redirect(url_for('view_profile_me'))
-                        else:
-                            flash("profile update unsuccessful!", "danger")
-                            return redirect(url_for('view_profile_me'))
+                    if avatar and AllowedExtension.images(secure_filename(avatar.filename)):
+                        try:
+                            uploaded = cloudinary.uploader.upload(avatar, folder="smart_app/avatars", resource_type="image")
                         
+                            if "secure_url" in uploaded:
+                                filename = uploaded["secure_url"]
+                                dtls = updateAdmin(firstname, surname, fullname, uid, stack, niche, role, filename, phone_num, email, bio, location, bday)
+
+                                updated = User_db.update_user_profile_by_oid(user_id, dtls)
+                                if updated:
+                                    flash("profile updated successfully,", "success")
+                                    return redirect(url_for('view_profile_me'))
+                                else:
+                                    flash("profile update unsuccessful!", "danger")
+                                    return redirect(url_for('view_profile_me'))
+                            else:
+                                flash("image upload error!", "danger")
+                                return redirect(url_for('view_profile_me'))
+                        
+                        except:
+                            flash("Unable to update your profile at the moment! Please make sure you have a strong internet connection", "danger")
+                            return redirect(url_for('view_profile_me'))
                     else:
                         user_profile = User_db.get_user_by_oid(user_id)
                         filename = user_profile["avatar"]
@@ -552,7 +611,7 @@ def admin_edit_profile(edit_id):
                         flash("Profile updated successful!", "success")
                         return redirect(url_for('show_user_profile', requested_id=edit_profile["_id"]))
                     else:
-                        flash("profile update unsuccessful!", "danger")
+                        flash("profile update undsuccessful!", "danger")
                         return redirect(url_for('view_members'))
                 except: 
                     flash("Profile update unsuccessful! Please confirm that the inputed email address is correct and that you are connected to the internet.", "danger")
@@ -569,8 +628,9 @@ def admin_edit_profile(edit_id):
 
 @app.get('/Add/lead/<intern_uid>')
 def admin_add_lead(intern_uid):
-    user_role = session["user_role"]
     if "user_id" in session:
+        user_role = session["user_role"]
+        
         if user_role == "Admin":
             stack = User_db.get_user_by_uid(intern_uid)["stack"]
             uid = User_db.get_lead(stack)["uid"]
@@ -605,9 +665,10 @@ def admin_add_lead(intern_uid):
 
 @app.route('/admin/delete_user/<requested_id>')
 def admin_delete_user(requested_id):
-    user_role = session["user_role"]
     
     if "user_id" in session:
+        user_role = session["user_role"]
+        
         if user_role == "Admin":
             deleted = User_db.delete_user(requested_id)
             
@@ -625,78 +686,17 @@ def admin_delete_user(requested_id):
         return redirect(url_for('login'))
     
 
-@app.route('/create/task', methods=["GET", "POST"])
-def create_task():
-    user_role = session["role"]
-    
-    if "user_id" in session:
-        if user_role == "lead" or user_role == "mentor":
-            if request.method == "POST":
-                
-            
-            
-                return redirect(url_for('view_stack_tasks'))
-            else:
-                return render_template('forms/create_task.html')
-        else:
-            flash  ('permission not granted!', "danger")
-            return redirect(url_for('login'))
-    else:
-        flash  ('you are not logged in!', "danger")
-        return redirect(url_for('login'))
 
-@app.route('/stack/tasks')
-def view_stack_tasks():
-    user_stack = session["stack"]
-    
-    if "user_id" in session:
-        stack_tasks = list(Task_db.get_tasks_by_stack(user_stack))
-        return render_template('pages/view_tasks.html', tasks=stack_tasks)
-            
-    else:
-        flash  ('you are not logged in!', "danger")
-        return redirect(url_for('login'))
-
-@app.route('/view/task')
-def view_task():
-    if "user_id" in session:
-        task_id = request.form.get('task_id')
-        task = Task_db.get_task_by_task_id(task_id)
-        return render_template('pages/view_task.html', task=task)
-    else:
-        flash  ('you are not logged in!', "danger")
-        return redirect(url_for('login'))
-
-@app.get('/delete/task/<task_id>')
-def delete_task():
-    user_role = session["role"]
-    
-    if "user_id" in session:
-        if user_role =="lead":
-            task_id = request.form.get("task_id")
-            deleted = Task_db.delete_task(task_id)
-            
-            if deleted:
-                flash(f"Task {task_id} deleted successfully!", "success")
-                return redirect(url_for('view_stack_tasks'))
-            else:
-                flash(f"The request to delete {task_id} not successful!","danger")
-                return redirect(url_for('view_stack_tasks'))
-        else:
-            flash  ('permission not granted!', "danger")
-            return redirect(url_for('login'))
-    else:
-        flash  ('you are not logged in!', "danger")
-        return redirect(url_for('login'))
 
 @app.get('/view/equipments')
 def view_all_eqpt():
-    user_id = session["user_id"]
-    user_role = session["user_role"]
-    stack = session["stack"]
-    user_profile = User_db.get_user_by_oid(user_id)
     
     if "user_id" in session:
+        user_id = session["user_id"]
+        user_role = session["user_role"]
+        stack = session["stack"]
+        user_profile = User_db.get_user_by_oid(user_id)
+        
         if user_role=="Admin" or (user_role =="Lead" and stack =="Hardware"):
             equipments = list(Eqpt_db.get_all_eqpt())
             personnels = User_db.get_all_users()
@@ -715,12 +715,13 @@ def view_all_eqpt():
 
 @app.get('/view/equipments/<eqpt_id>')        
 def view_eqpt_dtls(eqpt_id):
-    user_id = session["user_id"]
-    user_role = session["user_role"]
-    stack = session["stack"]
-    user_profile = User_db.get_user_by_oid(user_id)
     
     if "user_uid" in session:
+        user_id = session["user_id"]
+        user_role = session["user_role"]
+        stack = session["stack"]
+        user_profile = User_db.get_user_by_oid(user_id)
+        
         if user_role=="Admin" or (user_role =="Lead" and stack =="Hardware"):
             eqpt_dtls = Eqpt_db.get_eqpt_by_id(eqpt_id)
             
@@ -736,10 +737,11 @@ def view_eqpt_dtls(eqpt_id):
     
 @app.post('/equipment/new')
 def eqpt_new_input():
-    user_role = session["user_role"]
-    stack = session["stack"]
-    
+   
     if "user_id" in session:
+        user_role = session["user_role"]
+        stack = session["stack"]
+    
         if user_role=="Admin" or (user_role =="Lead" and stack == "Hardware"):
          
             Name = request.form.get("name")
@@ -780,10 +782,11 @@ def eqpt_new_input():
     
 @app.post('/equipment/existing/input')
 def eqpt_existing_input():
-    user_role = session["user_role"]
-    stack = session["stack"]
     
     if "user_id" in session:
+        user_role = session["user_role"]
+        stack = session["stack"]
+        
         if user_role=="Admin" or (user_role =="Lead" and stack == "Hardware"):
          
             eqpt_id = request.form.get("eqpt_id")
@@ -831,10 +834,11 @@ def eqpt_existing_input():
     
 @app.post('/equipment/update/<eqpt_id>')
 def update_eqpt_dtls(eqpt_id):
-    user_role = session["user_role"]
-    stack = session["stack"]
     
     if "user_id" in session:
+        user_role = session["user_role"]
+        stack = session["stack"]
+        
         if user_role=="Admin" or (user_role =="Lead" and stack =="Hardware"):
             name = request.form.get("name")
             quantity = request.form.get("quantity")
@@ -870,10 +874,11 @@ def update_eqpt_dtls(eqpt_id):
     
 @app.get('/delete/equipment/<eqpt_id>')
 def delete_eqpt(eqpt_id):
-    user_role = session["user_role"]
-    stack = session["stack"]
     
     if "user_id" in session:
+        user_role = session["user_role"]
+        stack = session["stack"]
+        
         if user_role=="Admin" or (user_role =="Lead" and stack =="Hardware"):
             
             deleted = Eqpt_db.delete_existing_eqpt(eqpt_id)
@@ -893,10 +898,11 @@ def delete_eqpt(eqpt_id):
     
 @app.post('/lost/equiment')
 def lost_eqpt():
-    user_role = session["user_role"]
-    stack = session["stack"]
     
     if "user_id" in session:
+        user_role = session["user_role"]
+        stack = session["stack"]
+        
         if user_role=="Admin" or (user_role =="Lead" and stack == "Hardware"):
             eqpt_id = request.form.get("id")
             eqpt = Eqpt_db.get_eqpt_by_id(eqpt_id)
@@ -944,12 +950,13 @@ def lost_eqpt():
     
 @app.get('/view/lost/equipment/<eqpt_id>')        
 def view_lost_eqpt_dtls(eqpt_id):
-    user_id = session["user_id"]
-    user_role = session["user_role"]
-    stack = session["stack"]
-    user_profile = User_db.get_user_by_oid(user_id)
     
     if "user_id" in session:
+        user_id = session["user_id"]
+        user_role = session["user_role"]
+        stack = session["stack"]
+        user_profile = User_db.get_user_by_oid(user_id)
+        
         if user_role=="Admin" or (user_role =="Lead" and stack =="Hardware"):
             eqpt_dtls = lost_eqpt_db.get_eqpt_by_id(eqpt_id)
             personnels = User_db.get_all_users()
@@ -964,10 +971,11 @@ def view_lost_eqpt_dtls(eqpt_id):
     
 @app.post('/edit/lost/equiment/<eqpt_id>')
 def edit_lost_eqpt(eqpt_id):
-    user_role = session["user_role"]
-    stack = session["stack"]
     
     if "user_id" in session:
+        user_role = session["user_role"]
+        stack = session["stack"]
+        
         if user_role=="Admin" or (user_role =="Lead" and stack == "Hardware"):
             name = request.form.get("name")
             type = request.form.get("type")
@@ -1002,10 +1010,11 @@ def edit_lost_eqpt(eqpt_id):
     
 @app.get('/delete/lost/equipment/<eqpt_id>')
 def delete_lost_eqpt(eqpt_id):
-    user_role = session["user_role"]
-    stack = session["stack"]
-    
+
     if "user_id" in session:
+        user_role = session["user_role"]
+        stack = session["stack"]
+        
         if user_role=="Admin" or (user_role =="Lead" and stack =="Hardware"):
             
             deleted = lost_eqpt_db.delete_lost_eqpt(eqpt_id)
@@ -1100,9 +1109,10 @@ def update_password():
 
 @app.get('/submissions/forms/request')
 def get_request_form():
-    user_id = session["user_id"]
     
     if "user_id" in session:
+        user_id = session["user_id"]
+        
         eqpts = Eqpt_db.get_all_eqpt()
         user_profile = User_db.get_user_by_oid(user_id)
         return render_template('forms/request_form.html', eqpts=eqpts, user_profile=user_profile)
@@ -1114,14 +1124,15 @@ def get_request_form():
     
 @app.get('/all/submissions')
 def all_submissions():
-    role = session["user_role"]
-    _id = session["user_id"]
-    uid = session["user_uid"]
-    stack = session["stack"]
-    user_profile = User_db.get_user_by_oid(_id)
-    eqpts = Eqpt_db.get_all_available_eqpt()
     
     if "user_id" in session:
+        role = session["user_role"]
+        _id = session["user_id"]
+        uid = session["user_uid"]
+        stack = session["stack"]
+        user_profile = User_db.get_user_by_oid(_id)
+        eqpts = Eqpt_db.get_all_available_eqpt()
+        
         if role == "Intern":
             reports =list(Report_db.get_by_sender(_id, uid))
             requests = list(Request_db.get_by_sender(_id, uid))
@@ -1347,14 +1358,15 @@ def all_submissions():
     
 @app.get('/submissions/interns')
 def intern_submissions():
-    role = session["user_role"]
-    _id = session["user_id"]
-    uid = session["user_uid"]
-    stack = session["stack"]
-    user_profile = User_db.get_user_by_oid(_id)
-    eqpts = Eqpt_db.get_all_available_eqpt()
     
     if "user_id" in session:
+        role = session["user_role"]
+        _id = session["user_id"]
+        uid = session["user_uid"]
+        stack = session["stack"]
+        user_profile = User_db.get_user_by_oid(_id)
+        eqpts = Eqpt_db.get_all_available_eqpt()
+        
         if role == "Lead":
             if stack == "Software":
                 position = "Software"
@@ -1575,9 +1587,10 @@ def intern_submissions():
 
 @app.post('/submissions/submit/request_form')
 def post_request_form():
-    user_id = session["user_id"]
-    uid = session["user_uid"]
+    
     if "user_id" in session:
+        user_id = session["user_id"]
+        uid = session["user_uid"]
         
         title = request.form.get("title")
         type = request.form.get("type")
@@ -1661,9 +1674,10 @@ def post_request_form():
 
 @app.get('/view/request/<request_id>')
 def view_request(request_id):
-    id = session["user_id"]
     
     if "user_id" in session:
+        id = session["user_id"]
+        
         user_profile = User_db.get_user_by_oid(id)
         request = Request_db.get_by_request_id(request_id)
         eqpts = Eqpt_db.get_all_available_eqpt()
@@ -1707,10 +1721,10 @@ def decline_request(request_id):
 
 @app.post('/request/edit/<request_id>')
 def edit_request(request_id):
-    user_id = session["user_id"]
-    uid = session["user_uid"]
     
     if "user_id" in session:
+        user_id = session["user_id"]
+        uid = session["user_uid"]
         
         title = request.form.get("title")
         type = request.form.get("type")
@@ -1826,10 +1840,10 @@ def delete_request(request_id):
 
 @app.post('/submissions/submit/report')
 def post_report_form():
-    user_id = session["user_id"]
-    uid = session["user_uid"]
     
     if "user_id" in session:
+        user_id = session["user_id"]
+        uid = session["user_uid"]
         
         title = request.form.get("title")
         report_no = request.form.get("report_no")
@@ -1859,10 +1873,11 @@ def post_report_form():
         return redirect(url_for('login'))
     
 @app.get('/view/report/<report_id>')
-def view_report(report_id):
-    id = session["user_id"]
-    
+def view_report(report_id):   
+     
     if "user_id" in session:
+        id = session["user_id"]
+        
         user_profile = User_db.get_user_by_oid(id)
         report = Report_db.get_by_report_id(report_id)
     
@@ -1922,10 +1937,10 @@ def report_feedback(report_id):
     
 @app.post('/report/edit/<report_id>')
 def edit_report(report_id):
-    user_id = session["user_id"]
-    uid = session["user_uid"]
     
     if "user_id" in session:
+        user_id = session["user_id"]
+        uid = session["user_uid"]
         
         title = request.form.get("title")
         report_no = request.form.get("report_no")
@@ -1979,10 +1994,10 @@ def delete_report(report_id):
 
 @app.post('/submissions/create/projects')
 def post_project_form():
-    user_id = session["user_id"]
-    uid = session["user_uid"]
     
     if "user_id" in session:
+        user_id = session["user_id"]
+        uid = session["user_uid"]
         
         topic = request.form.get("topic")
         focus = request.form.get("focus")
@@ -2029,11 +2044,12 @@ def post_project_form():
 
 @app.get('/view/project/<project_id>')
 def view_project(project_id):
-    id = session["user_id"]
-    role = session["user_role"]
-    stack = session["stack"]
     
     if "user_id" in session:
+        id = session["user_id"]
+        role = session["user_role"]
+        stack = session["stack"]
+        
         user_profile = User_db.get_user_by_oid(id)
         project = Project_db.get_by_project_id(project_id)
         completed = int(0)
@@ -2111,10 +2127,10 @@ def mark_project_incomplete(project_id, id):
 
 @app.post('/project/edit/<project_id>')
 def edit_project(project_id):
-    user_id = session["user_id"]
-    uid = session["user_uid"]
     
     if "user_id" in session:
+        user_id = session["user_id"]
+        uid = session["user_uid"]
         
         topic = request.form.get("topic")
         focus = request.form.get("focus")
@@ -2162,77 +2178,109 @@ def edit_project(project_id):
         flash  ('you are not logged in!', "danger")
         return redirect(url_for('login')) 
     
-@app.post('/project/submit/<project_id>')
-def submit_project(project_id):
-    uid = session["user_uid"]
-    id = session["user_id"]
+@app.get('/delete/project/<project_id>')
+def delete_project(project_id):
     
     if "user_id" in session:
+            
+            deleted = Project_db.delete_project(project_id)
+            
+            if deleted:
+                flash ("Project deleted successfully!", "success")
+                return redirect(url_for('intern_submissions'))
+            else:
+                flash ('The request was unsuccessful!', "danger")
+                return redirect(url_for('view_project', project_id=project_id))
+                  
+    else:
+        flash  ('you are not logged in!', "danger")
+        return redirect(url_for('login'))
+
+    
+@app.post('/project/submit/<project_id>')
+def submit_project(project_id):
+    
+    
+    if "user_id" in session:
+        uid = session["user_uid"]
+        id = session["user_id"]
         project = request.files["file"]
         filename = secure_filename(project.filename)
-        filepath = generate.file_id()
+        
         if project and AllowedExtension.files(filename):
-           
             
-            if "submissions" in Project_db.get_by_project_id(project_id):
-                submitted = Project_db.get_by_project_id(project_id)["submissions"]
-                now = datetime.now().strftime
-                month = now("%B")
-                date = now("%d")
-                year = now("%Y")
-                date_submitted = "{0} {1}, {2}".format(month, date, year)
-                
-                for x in submitted:
-                    if x["id"]==id:
-                        submitted.remove(x)
-                        break
-                submitted.append({
-                    "id": id,
-                    "uid": uid,
-                    "project_id": project_id,
-                    "file_name": filename,
-                    "file_path": filepath,
-                    "status": "submitted",
-                    "date_submitted": date_submitted,
-                    "datetime": datetime.now()
-                })
-                no_submissions = len(submitted)
-                uploaded = Project_db.submit_project(project_id, submitted, no_submissions)
+            try:
+                uploaded = cloudinary.uploader.upload(project, folder="smart_app/projects", resource_type="raw")
 
-                if uploaded:
-                    project.save(os.path.join(app.config['PROJECT_FOLDER'], filepath))
-                    flash('Project submitted successfully',"success")
-                    return redirect(url_for('view_project', project_id=project_id))
-                else:
-                    flash('An error occurred! Try again', "danger")
-                    return redirect(url_for('view_project', project_id=project_id))
+                if "secure_url" in uploaded:
+                    filepath = uploaded["secure_url"]
+            
+                
+                    if "submissions" in Project_db.get_by_project_id(project_id):
+                        submitted = Project_db.get_by_project_id(project_id)["submissions"]
+                        now = datetime.now().strftime
+                        month = now("%B")
+                        date = now("%d")
+                        year = now("%Y")
+                        date_submitted = "{0} {1}, {2}".format(month, date, year)
+                        
+                        for x in submitted:
+                            if x["id"]==id:
+                                submitted.remove(x)
+                                break
+                        submitted.append({
+                            "id": id,
+                            "uid": uid,
+                            "project_id": project_id,
+                            "file_name": filename,
+                            "file_path": filepath,
+                            "status": "submitted",
+                            "date_submitted": date_submitted,
+                            "datetime": datetime.now()
+                        })
+                        no_submissions = len(submitted)
+                        uploaded = Project_db.submit_project(project_id, submitted, no_submissions)
+
+                        if uploaded:
+                            flash('Project submitted successfully',"success")
+                            return redirect(url_for('view_project', project_id=project_id))
+                        else:
+                            flash('An error occurred! Try again', "danger")
+                            return redirect(url_for('view_project', project_id=project_id))
+                    else:
+                        now = datetime.now().strftime
+                        month = now("%B")
+                        date = now("%d")
+                        year = now("%Y")
+                        date_submitted = "{0} {1}, {2}".format(month, date, year)
+                        project_submitted = [{
+                            "id": id,
+                            "uid": uid,
+                            "project_id": project_id,
+                            "file_name": filename,
+                            "file_path": filepath,
+                            "status": "submitted",
+                            "date_submitted": date_submitted,
+                            "datetime": datetime.now()  
+                        }]
+                        no_submissions = int(1)
+                        
+                        uploaded = Project_db.submit_project(project_id, project_submitted, no_submissions)
+
+                        if uploaded: 
+                            flash('Project submitted successfully',"success")
+                            return redirect(url_for('view_project', project_id=project_id))
+                        else:
+                            flash('An error occurred! Try again', "danger")
+                            return redirect(url_for('view_project', project_id=project_id))
+            except:
+                flash("Couldn't upload your project at the moment! Please make sure you have a strong internet connection.", "danger")
+                return redirect(url_for('view_project', project_id=project_id))
+            
             else:
-                now = datetime.now().strftime
-                month = now("%B")
-                date = now("%d")
-                year = now("%Y")
-                date_submitted = "{0} {1}, {2}".format(month, date, year)
-                project_submitted = [{
-                    "id": id,
-                    "uid": uid,
-                    "project_id": project_id,
-                    "file_name": filename,
-                    "file_path": filepath,
-                    "status": "submitted",
-                    "date_submitted": date_submitted,
-                    "datetime": datetime.now()  
-                }]
-                no_submissions = int(1)
-                
-                uploaded = Project_db.submit_project(project_id, project_submitted, no_submissions)
-
-                if uploaded: 
-                    project.save(os.path.join(app.config['PROJECT_FOLDER'], filepath))
-                    flash('Project submitted successfully',"success")
-                    return redirect(url_for('view_project', project_id=project_id))
-                else:
-                    flash('An error occurred! Try again', "danger")
-                    return redirect(url_for('view_project', project_id=project_id))
+                flash('file upload error!', "danger")
+                return redirect(url_for('view_project', project_id=project_id))
+        
         else:
             flash('Invalid file format! Try again', "danger")
             return redirect(url_for('view_project', project_id=project_id))
@@ -2244,10 +2292,10 @@ def submit_project(project_id):
 
 @app.get('/project/submissions/<project_id>')
 def project_submissions(project_id):
-    user_id = session["user_id"]
-    user_profile = User_db.get_user_by_oid(user_id)
     
     if "user_id" in session:
+        user_id = session["user_id"]
+        user_profile = User_db.get_user_by_oid(user_id)
         if "submissions" in Project_db.get_by_project_id(project_id):
             submissions = Project_db.get_by_project_id(project_id)["submissions"]
             topic = Project_db.get_by_project_id(project_id)["topic"]
@@ -2276,8 +2324,11 @@ def download_project_submissions(project_id, id):
             if x["id"]==id:
                 upload = x
                 break
+        file_url = upload["file_path"]
+        file_name = upload["file_name"]
+        app.logger.info(file_url)
         
-        return send_file(os.path.join(app.config['PROJECT_FOLDER'], upload["file_path"]), download_name=upload["file_name"], as_attachment=True)
+        return send_file(urllib.request.urlopen(file_url), download_name=file_name, as_attachment=True)
 
     else:
         flash  ('you are not logged in!', "danger")
@@ -2285,10 +2336,10 @@ def download_project_submissions(project_id, id):
     
 @app.get('/project/send/feedback/<project_id>/<id>')
 def send_feedback(project_id, id):
-    user_id = session["user_id"]
-    user_profile = User_db.get_user_by_oid(user_id)
     
     if "user_id" in session:
+        user_id = session["user_id"]
+        user_profile = User_db.get_user_by_oid(user_id)
         project = Project_db.get_by_project_id(project_id)
         submissions = project["submissions"]
         
@@ -2325,10 +2376,138 @@ def submit_feedback(project_id, id):
     else:
         flash  ('you are not logged in!', "danger")
         return redirect(url_for('login'))
+    
+@app.post('/todo/create') 
+def create_todo():
+    
+    if "user_id" in session:
+        user_id = session["user_id"]
+        description = request.get_json()['description']
+        
+        dtls = {
+            "uid": user_id,
+            "description": description,
+            "date_time": datetime.now(),
+            "completed": False
+        }
+        id = str(Todos_db.create_todo(dtls))
+        
+        return jsonify({
+            'description': description,
+            'id' : id
+        })
+    
+    else:
+        flash  ('you are not logged in!', "danger")
+        return redirect(url_for('login'))
+
+@app.get('/todo/delete/<todo_id>')
+def delete_todo(todo_id):    
+    if "user_id" in session:        
+        deleted = Todos_db.delete_todo(todo_id)
+        
+        if deleted:
+            return jsonify({
+                'description':"deleted"
+            })
+        else:
+            flash  ('An error occured!', "danger")
+            return redirect(url_for('home'))
+    else:
+        flash  ('you are not logged in!', "danger")
+        return redirect(url_for('login'))
+
+@app.post('/todo/<todo_id>/set-completed')
+def mark_completed(todo_id):    
+    
+    if "user_id" in session:   
+        user_id = session["user_id"]
+        
+        status = request.get_json()['completed']
+        dtls = {
+            "completed": status
+        }     
+        marked = Todos_db.update_todo(todo_id, dtls)
+        todo = Todos_db.get_specific_todo(user_id, todo_id)
+        if marked:
+            return jsonify({
+                'id': todo_id,
+                'description': todo["description"],
+                'completed':status  
+            })
+        else:
+            flash  ('An error occured!', "danger")
+            return redirect(url_for('home'))
+    else:
+        flash  ('you are not logged in!', "danger")
+        return redirect(url_for('login'))
 
 
+@app.post('/todos/filter')
+def task_filter():
+    
+    if "user_id" in session:
+        user_id = session["user_id"]
+        
+        option = request.get_json()['filter']
+        todos = list(Todos_db.get_todos_by_user_id(user_id))
+        app.logger.info(option)
+        
+        taskCompleted = 0
+        if option == "week":
+            for todo in todos:
+                if todo["completed"]==True:
+                    if (todo["date_time"]).strftime("%U")==datetime.now().strftime("%U"):
+                        taskCompleted = int(taskCompleted) + 1
+                    else:
+                        continue
+                else:
+                    continue
+            
+            return jsonify({ 'taskCompleted': taskCompleted})
+        
+        elif option == "month":
+            for todo in todos:
+                if todo["completed"]==True:
+                    if (todo["date_time"]).strftime("%m")==datetime.now().strftime("%m"):
+                        taskCompleted = int(taskCompleted) + 1
+                    else:
+                        continue
+                else:
+                    continue
+            return jsonify({ 'taskCompleted': taskCompleted})
+            
+                
+        elif option == "year":
+            for todo in todos:
+                if todo["completed"]==True:
+                    if (todo["date_time"]).strftime("%Y")==datetime.now().strftime("%Y"):
+                        taskCompleted = int(taskCompleted) + 1
+                    else:
+                        continue
+                else:
+                    continue
+            return jsonify({ 'taskCompleted': taskCompleted})
+            
+            
+        
+    else:
+        flash  ('you are not logged in!', "danger")
+        return redirect(url_for('login'))
 
 
+@app.get('/all/todos')
+def all_todos():
+    if "user_id" in session:
+        user_id = session["user_id"]
+        user_profile = User_db.get_user_by_oid(user_id)
+        all_todos = list(Todos_db.get_todos_by_user_id(user_id))
+        
+        return render_template('pages/all_todos.html', all_todos=all_todos, user_profile=user_profile)
+
+    else:
+        flash  ('you are not logged in!', "danger")
+        return redirect(url_for('login'))
 
 if __name__=="__main__":
     app.run(debug=True)

@@ -1,6 +1,40 @@
 {% extends 'layouts/base.html ' %}
 
 {% block content %}
+<style>
+
+.deleteBtn {
+  margin-top: 0;
+  border: none;
+  background: none;
+  float: right;
+}
+
+
+button{
+  padding:0;
+  margin:0;
+}
+
+#todos{
+  margin:0;
+  padding:0;
+  
+}
+
+#todo-list{
+  margin:0;
+  padding:0;
+  
+}
+.overflow {
+  height: auto;
+  max-height:145px; 
+  overflow-y:hidden; 
+
+}
+</style>
+
 <div class="d-flex flex-column justify-content-center container  mb-auto p-5"> 
     <div class="text-center" style="min-width: 350px;">
     <h6><strong>{{date.day}}, {{date.month}} {{date.date}}</strong></h6>
@@ -8,13 +42,13 @@
     </div>
   <div class="d-flex flex-row">
     <div class=" d-flex flex-row border-0 rounded-pill" style=" width:500px; min-height: 45px;padding-left:30px; padding-right:30px; padding-top:8px; padding-bottom:8px; margin: auto; background-color: rgba(155, 178, 160, 0.31);">
-      <select class="form-select form-select-sm border-0 me-1" aria-label=".form-select-sm example" style="width: 110px; background-color: rgba(155, 178, 160, 0.31);      ">
-        <option selected><p>My week</p></option>
-        <option value="month"><p>My month</p></option>
-        <option value="month"><p>My year</p></option>
+      <select id="select" class="form-select form-select-sm border-0 me-1" onchange="filter()" aria-label=".form-select-sm example" style="width: 110px; background-color: rgba(155, 178, 160, 0.31);      ">
+        <option value="week" ><p>My week</p></option>
+        <option  value="month"><p>My month</p></option>
+        <option  value="year"><p>My year</p></option>
       </select>
       <span class="me-5" style="min-height: 25px; width: .1rem; background: rgba(0, 0, 0, 0.32);"></span>
-      <div><i class="bi bi-check2 me-2"></i><strong>0</strong> Tasks Completed</div>
+      <div><i class="bi bi-check2 me-2"></i><strong id="myStrong">{{date.taskCompleted}}</strong> Tasks Completed</div>
       
   </div>
 </div>
@@ -43,28 +77,37 @@
     <div class="card" style="height: 330px; min-width:400px; background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);"> 
       <div class="card-header" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">To-do List</div>
       <div class="card-body">
-        <ul class="nav nav-tabs" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
-        <li class="nav-item">
-          <a class="nav-link active" data-bs-toggle="tab" href="#upcoming">Upcoming</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" data-bs-toggle="tab" href="#overdue">Overdue</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" data-bs-toggle="tab" href="#completed">Completed</a>
-        </li>
-      </ul>
-      
-      <!-- Tab panes -->
-      <div class="tab-content">
-        <div class="tab-pane container active" id="upcoming">Isaiah</div>
-        <div class="tab-pane container fade" id="overdue">Faluyi</div>
-        <div class="tab-pane container fade" id="completed">Faluyi</div>
-      </div>
+        <form id= "form">
+            <div class="row mt-2">
+              <div class="col d-flex flex-direction-row" >
+                <input type="text" class="form-control me-2 " id="description" name="description" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+                <button type="submit" class="btn" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">create</button>
+              </div>
+            <div class="row mt-2">
+              <div class="col overflow">
 
+             
+              <ul id="todos">
+                {%for todo in todos%}
+                <li>
+                  <input class="check-completed" data-id="{{ todo._id }}" type="checkbox" {% if todo.completed == true %} checked {% endif %} />
+                  {{todo.description}}<button type="button" class="deleteBtn bi bi-trash3" data-id = "{{todo._id}}"></button>
+                </li>
+                {%endfor%}
+              </ul> 
+            </div>
+            <div id="more" {%if todos%} style="display:block" {%else%}style="display:none"{%endif%} >
+              <a href="/all/todos" class="text-decoration-none">
+                <button type="button" class="btn">show more</button>
+              </a>
+            </div>
+          </div>
+
+            </div>
+          </form>
+        </div> 
       </div>
     </div>
-  </div>
   <div class="col">
     <div class="card" style="height: 330px ;min-width:400px; background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
       <div class="card-header" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">Projects</div>
@@ -294,7 +337,7 @@
             {%else%}
             <tr>
                 <td>Dummy project</td>
-                <td><p style="font-size:smaller;">10 minutes ago</p></td>
+                 <td><p style="font-size:smaller;">10 minutes ago</p></td>
             </tr>
             {%endif%}
         </tbody>
@@ -380,7 +423,7 @@
         {%else%}
           {%for member in members%}
           <div class="d-flex align-items-center mb-4" style="margin:auto;">
-            <a href="/show/profile/{{member._id}}" ><img src="/static/images/{{member.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></a>
+            <a href="/show/profile/{{member._id}}" ><img src="{{member.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></a>
             <div class="text-center">
               <h6>{{member.firstname}}</h6>
               <h6>{{member.niche}}</h6>
@@ -567,8 +610,157 @@
   </div>
 </div>
 
+<script>
+ 
 
+  
+  document.getElementById('form').onsubmit = function(e) {
+    e.preventDefault();
+    fetch('/todo/create', {
+      method: 'POST',
+      body: JSON.stringify({
+        'description': document.getElementById('description').value
+      }),
+      headers:{
+        'Content-Type': 'application/json'
+      }
+    })
+    .then(function(response){
+      return response.json();
+    })
+    .then(function(jsonResponse){
+      console.log(jsonResponse);
+      const liItem = document.createElement('li');
+      const checkbox = document.createElement('input');
+      checkbox.className = 'check-completed';
+      checkbox.type = 'checkbox';
+      checkbox.setAttribute('data-id', jsonResponse.id);
+      liItem.appendChild(checkbox);
 
+      const text = document.createTextNode(' ' + jsonResponse.description);
+      liItem.appendChild(text);
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = "button";
+      deleteBtn.className = "deleteBtn bi bi-trash3";
+      deleteBtn.setAttribute('data-id', jsonResponse.id);
+      liItem.appendChild(deleteBtn);
+      document.getElementById('todos').appendChild(liItem);
+    })
+    .then(function() {
+      const checkboxes = document.querySelectorAll('.check-completed');
+      for (i = 0; i < checkboxes.length; i++) {
+        const checkbox = checkboxes[i];
+        checkbox.onchange = function(e) {
+          const newCompleted = e.target.checked;
+          const todoId = e.target.dataset['id'];
+          fetch('/todo/' + todoId + '/set-completed', {
+            method: 'POST',
+            body: JSON.stringify({
+              'completed': newCompleted
+            }),
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          })
+          
+        }
+      }
+    })
+    .then(function(){
+    document.getElementById('more').style.display = "block";
+    var deleteBtns = document.querySelectorAll('.deleteBtn');
+    for (let i = 0; i < deleteBtns.length; i++){
+      var btn = deleteBtns[i];
+      btn.onclick = function(e) {
+        var todoId = e.target.dataset['id'];
+      fetch('/todo/delete/' + todoId, {
+        method: 'GET'
+        })
+      .then(function() {
+        var item = e.target.parentElement;
+        item.remove();
+      })
+      .then(function(){
+        const deleteBt = document.querySelectorAll('.deleteBtn');  
+        if (deleteBt.length == 0) {
+          document.getElementById('more').style.display = "none";
+          }
+      })
+      
+      }
+  }
+    })
+    
+  }
+
+  const deleteBtns = document.querySelectorAll('.deleteBtn');
+  for (i = 0; i < deleteBtns.length; i++){
+    const btn = deleteBtns[i];
+    btn.onclick = function(e) {
+      const todoId = e.target.dataset['id'];
+    fetch('/todo/delete/' + todoId, {
+      method: 'GET'
+      })
+    .then(function() {
+      const item = e.target.parentElement;
+      item.remove();
+    })
+    .then(function(){
+      const deleteBt = document.querySelectorAll('.deleteBtn');  
+      if (deleteBt.length == 0) {
+        document.getElementById('more').style.display = "none";
+        }
+    })
+    
+    }
+  }
+
+  const checkboxes = document.querySelectorAll('.check-completed');
+      for (i = 0; i < checkboxes.length; i++) {
+        const checkbox = checkboxes[i];
+        checkbox.onchange = function(e) {
+          const newCompleted = e.target.checked;
+          const todoId = e.target.dataset['id'];
+          fetch('/todo/' + todoId + '/set-completed', {
+            method: 'POST',
+            body: JSON.stringify({
+              'completed': newCompleted
+            }),
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          })
+          
+        }
+      }
+  
+
+  function filter() {
+  var option = document.getElementById('select').value;
+  
+  fetch('/todos/filter', {
+    method: 'POST',
+    body: JSON.stringify({
+      'filter': option
+    }),
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  })
+  .then(function(response){
+        return response.json();
+      })
+  .then(function(jsonResponse){
+    console.log(jsonResponse);
+    var x = document.getElementById("myStrong");
+    x.innerHTML = jsonResponse.taskCompleted;
+  })
+
+}
+
+  
+</script>
 
 
 {% endblock content %}

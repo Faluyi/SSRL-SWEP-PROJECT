@@ -24,7 +24,7 @@
             {%if members%}
               {%for member in members%}
                 <div class="d-flex align-items-center me-3 mb-3"> 
-                  <a href="/show/profile/{{member._id}}" ><img src="/static/images/{{member.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></a>
+                  <a href="/show/profile/{{member._id}}" ><img src="{{member.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></a>
                   <div class="text-center">
                     <h6>{{member.firstname}}</h6>
                     <h6>{{member.niche}}</h6>
@@ -88,7 +88,7 @@
                             <ul class="dropdown-menu dropdown-menu-start scrollable-menu " style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
                               {%for intern in softinterns%}
                               <div class="d-flex flex-row">
-                                  <li><a  class="dropdown-item" href="/Add/lead/{{intern.uid}}"><img src="/static/images/{{intern.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:30px;height:30px;">{{intern.fullname}}</a>
+                                  <li><a  class="dropdown-item" href="/Add/lead/{{intern.uid}}"><img src="{{intern.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:30px;height:30px;">{{intern.fullname}}</a>
                                   
                                   </li>
                                 </div>
@@ -104,7 +104,7 @@
                       {% if softlead %}
                         {%for lead in softlead%}
                             <div class="d-flex align-items-center me-5 mb-3 ">
-                              <a href="/show/profile/{{lead._id}}"><img src="/static/images/{{lead.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></a>
+                              <a href="/show/profile/{{lead._id}}"><img src="{{lead.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></a>
                               <div class="text-center">
                                 <h6>{{lead.firstname}}</h6>
                                 <h6>{{lead.niche}}</h6>
@@ -125,7 +125,7 @@
                       
                         {%for intern in softinterns%}
                           <div class="d-flex align-items-center mb-3 me-3" >
-                              <a href="/show/profile/{{intern._id}}"><img src="/static/images/{{intern.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></a>
+                              <a href="/show/profile/{{intern._id}}"><img src="{{intern.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></a>
                               <div class="text-center">
                                 <h6>{{intern.firstname}}</h6>
                                 <h6>{{intern.niche}}</h6>
@@ -174,7 +174,7 @@
                           <ul class="dropdown-menu scrollable-menu" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
                             {%for intern in hardinterns%}
                             <div class="d-flex flex-row">
-                                <li><a class="dropdown-item" href="/Add/lead/{{intern.uid}}"><img src="/static/images/{{intern.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:30px;height:30px;">{{intern.fullname}}</a>
+                                <li><a class="dropdown-item" href="/Add/lead/{{intern.uid}}"><img src="{{intern.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:30px;height:30px;">{{intern.fullname}}</a>
                                 
                                 </li>
                               </div>
@@ -190,7 +190,7 @@
                     {% if hardlead%}
                       {%for lead in hardlead%}
                           <div class="d-flex align-items-center me-5 mb-3 ">
-                            <a href="/show/profile/{{lead._id}}"><img src="/static/images/{{lead.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></a>
+                            <a href="/show/profile/{{lead._id}}"><img src="{{lead.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></a>
                             <div class="text-center">
                               <h6>{{lead.firstname}}</h6>
                               <h6>{{lead.niche}}</h6>
@@ -210,7 +210,7 @@
                       
                         {%for intern in hardinterns%}
                           <div class="d-flex align-items-center mb-3 me-3">
-                              <a href="/show/profile/{{intern._id}}"><img src="/static/images/{{intern.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></a>
+                              <a href="/show/profile/{{intern._id}}"><img src="{{intern.avatar}}" class="rounded-circle bg-light me-2" alt="avatar" style="width:100px;height:100px;"></a>
                               <div class="text-center">
                                 <h6>{{intern.firstname}}</h6>
                                 <h6>{{intern.niche}}</h6>
