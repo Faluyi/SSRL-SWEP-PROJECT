@@ -3,8 +3,7 @@ from bson.objectid import ObjectId
 from properties import *
 import string, random
 
-uri = db_uri
-#uri = "mongodb://localhost:27017"
+uri = "mongodb+srv://Faluyi:Akindele@cluster0.ozepuyt.mongodb.net/?retryWrites=true&w=majority"
 client = MongoClient(uri)
 db = client['SSRL_DB']
 Users = db['Users']
