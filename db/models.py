@@ -2,8 +2,8 @@ from pymongo import MongoClient
 from bson.objectid import ObjectId 
 import string, random
 
-#uri = "mongodb+srv://Faluyi:Akindele@cluster0.vbgemiy.mongodb.net/?retryWrites=true&w=majority"
-uri = "mongodb://localhost:27017"
+uri = "mongodb+srv://Faluyi:Akindele@ssrl.lbhwor2.mongodb.net/ssrl?retryWrites=true&w=majority"
+#uri = "mongodb://localhost:27017"
 client = MongoClient(uri)
 db = client['SSRL_DB']
 Users = db['Users']
