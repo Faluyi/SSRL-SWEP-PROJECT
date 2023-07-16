@@ -41,8 +41,8 @@ app.config['MAIL_USE_SSL'] = True
 
 cloudinary.config( 
   cloud_name = "diaownipw", 
-  api_key = "229453716768545", 
-  api_secret = "vj6O2rC0oYYFTXuOT_n-VSAlvDo" ,
+  api_key = cloud_key, 
+  api_secret = cloud_secret,
   secure = True
 )
 
@@ -2489,7 +2489,7 @@ def task_filter():
                     continue
             return jsonify({ 'taskCompleted': taskCompleted})
             
-            
+             
         
     else:
         flash  ('you are not logged in!', "danger")
