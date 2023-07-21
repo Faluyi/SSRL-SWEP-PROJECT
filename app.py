@@ -154,27 +154,25 @@ def change_password():
             flash("Unmatching password input! Unable to update your password", "danger")
             return render_template('forms/change_password.html')
 
-@app.get('/Admin/create/user')
+@app.post('/Admin/create/user')
 def create_user():
     
-    # if "user_id" in session:
-    #     user_role = session["user_role"]
+     if "user_id" in session:
+         user_role = session["user_role"]
         
-    #     if user_role == "Admin":
+         if user_role == "Admin":
         
-            firstname = "Folashade"
-            surname = "Dahunsi"
+            firstname = request.form.get("firstname")
+            surname = request.form.get("surname")
             fullname = "{0} {1}".format(surname, firstname)
             pwd = generate.password()
             hashed_pwd = generate_password_hash(pwd)
             uid = generate.user_id(firstname)
-            app.logger.info(uid)
-            app.logger.info(pwd)
-            stack = ""
-            niche =""
-            role = "Admin"
+            stack = request.form.get("stack")
+            niche = request.form.get("niche")
+            role = request.form.get("role")
             phone_num = "NIL"
-            email = "faluyiisaiah@gmail.com"
+            email = request.form.get("email")
             mentor_id = "NIL"
             avatar = "https://res.cloudinary.com/diaownipw/image/upload/v1687873502/smart_app/avatars/zeaqhw6su6xkchl1o4im.svg"
             task_id = "NIL"
@@ -204,12 +202,12 @@ def create_user():
                 flash("Unable to create user at the moment! Please confirm that the inputed email is correct or check your internet connection.", "danger")
                 return redirect(url_for('home'))
                 
-    #     else:
-    #         flash('permission not granted', "danger")
-    #         return redirect(url_for('login'))            
-    # else:
-    #     flash  ('you are not logged in!', "danger")
-    #     return redirect(url_for('login'))
+         else:
+             flash('permission not granted', "danger")
+             return redirect(url_for('login'))            
+     else:
+         flash  ('you are not logged in!', "danger")
+         return redirect(url_for('login'))
 
             
 @app.post('/user/authenticate')
