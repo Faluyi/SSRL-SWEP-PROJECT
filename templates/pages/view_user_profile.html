@@ -1,10 +1,10 @@
 {% extends 'layouts/base.html' %}
 {% block content %}
 <div class="container card mb-2 mt-3" style="height:100vh; min-width:400px; background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
-    <div class="container card-image-top mt-5" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+    <div class="container card-image-top mt-5" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);"> 
       {%if user_profile.role=="Admin"%}
       <div class="dropdown text-end">
-        <button type="button" class="border-0" data-bs-toggle="dropdown"><i class="bi bi-three-dots-vertical"></i></button>
+        <button type="button" class="btn" data-bs-toggle="dropdown" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1)"><i class="bi bi-three-dots-vertical"></i></button>
           
           <ul class="dropdown-menu" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
             <li><a class="dropdown-item" href="/view/members"<button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#editModal">Edit profile</button></a></li>
@@ -17,7 +17,7 @@
       {% endif %}
         <div class="d-flex flex-center justify-content-center">
             <div>
-                <img src="/static/images/{{requested_profile.avatar}}" class="rounded-circle shadow mb-3" style="width: 200px; height:200px;"alt="Avatar"/>
+                <img src="{{requested_profile.avatar}}" class="rounded-circle shadow mb-3" style="width: 200px; height:200px;"alt="Avatar"/>
                 <div class="text-center">
                 <h5 class="mb-2"><strong>{{requested_profile.fullname}}</strong></h5>
                 {% if requested_profile.niche %}<p class="text-muted">{{requested_profile.niche}} {% endif %} <span class="badge bg-primary">{{requested_profile.role}}</span></p>
@@ -43,7 +43,8 @@
       </div>
       <div class="d-flex flex-direction-column mb-3">
         <i class="bi bi-geo-alt-fill me-2"></i>
-        {%if requested_profile.location %}<p class="card-text">{{requested_profile.location}}</p>
+        {%if requested_profile.location %}<p class="card-text">{{requested_profile.location}}</p>\
+        
         {% else %}
         <p class="card-text">NIL</p>
         {% endif %}
@@ -146,7 +147,7 @@
 
 
   <!-- The Modal -->
-  <div class="modal" id="deleteModal">
+  <div class="modal fade" id="deleteModal">
     <div class="modal-dialog">
       <div class="modal-content" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
   
@@ -162,7 +163,7 @@
         </div>
   
         <!-- Modal footer -->
-        <div class="modal-footer">
+        <div class="modal-footer" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1)">
           <a href="/admin/delete_user/{{requested_profile._id}}"><button type="button" class="btn btn-danger" data-bs-dismiss="modal">Yes</button></a>
         </div>
   

@@ -1,27 +1,33 @@
 from pymongo import MongoClient
 from bson.objectid import ObjectId 
+from properties import *
 import string, random
 
-client = MongoClient('mongodb://localhost:27017/')
+uri = "mongodb+srv://Faluyi:Akindele@cluster0.ozepuyt.mongodb.net/?retryWrites=true&w=majority"
+client = MongoClient(uri)
 db = client['SSRL_DB']
 Users = db['Users']
-Tasks = db['Tasks']
+Todos = db['Todos']
 Eqpts = db['Equipments']
 lost_eqpts = db["Lost_eqpt"]
 Requests = db["Requests"]
 Reports = db["Reports"]
 Projects = db["projects"]
+Inventory = db["Inventory"]
 
 class Userdb:
     def __init__(self) -> None:
         self.collection =  Users
 
     def create_user(self, usr):
-        return self.collection.insert_one(usr.__dict__)
+        return self.collection.insert_one(usr.__dict__).inserted_id
         
         
     def get_user_by_role(self, role):
         return self.collection.find({"role": role})
+    
+    def get_user_by_role_one(self, role):
+        return self.collection.find_one({"role": role})
     
     def get_user_by_uid(self, user_uid):
         return self.collection.find_one({"uid": user_uid})
@@ -42,7 +48,7 @@ class Userdb:
         return self.collection.delete_one({"_id":ObjectId(_id)}).deleted_count>0
     
     def get_all_users(self):
-        return self.collection.find()
+        return self.collection.find().sort("uid")
     
     def get_all_users_limited(self):
         return self.collection.find().limit(4)
@@ -51,32 +57,35 @@ class Userdb:
         return self.collection.find_one({"role":"Lead", "stack":stack})
     
     def get_users_by_stack(self, stack):
-        return self.collection.find({"stack":stack})
+        return self.collection.find({"stack":stack}).sort("uid")
     
     def get_users_by_stack_limited(self, stack):
         return self.collection.find({"stack":stack}).limit(4)
     
     
-class Task_db:
+class Todosdb:
     def __init__(self) -> None:
-        self.collection = Tasks
+        self.collection = Todos
         
-    def create_task(self, **kwargs):
-        return self.collection.insert_one(kwargs.__dict__)
+    def create_todo(self, dtls):
+        return self.collection.insert_one(dtls).inserted_id
     
-    def update_task(self, **kwargs):
-        return self.collection.update_one({"_id":kwargs["task_id"]},{"$set":kwargs.__dict__}).modified_count>0
+    def update_todo(self, todo_id, dtls):
+        return self.collection.update_one({"_id":ObjectId(todo_id)},{"$set":dtls}).modified_count>0
 
-    def delete_task(self, task_id):
-        return self.collection.delete_one({"_id":task_id}).deleted_count>0
+    def delete_todo(self, todo_id):
+        return self.collection.delete_one({"_id":ObjectId(todo_id)}).deleted_count>0
     
-    def get_tasks_by_stack(self, user_stack):
-        return self.collection.find({"stack":user_stack})
+    def get_specific_todo(self, user_id, todo_id):
+        return self.collection.find_one({"_id":ObjectId(todo_id), "uid":user_id})
     
-    def get_task_by_task_id(self, task_id):
-        return self.collection.find_one({"_id":task_id})
+    def get_todos_by_user_id(self, user_id):
+        return self.collection.find({"uid":user_id}).sort("date_time")
     
-    def get_all_tasks(self):
+    def get_todos_by_user_id_limited(self, user_id):
+        return self.collection.find({"uid":user_id}).sort("date_time")
+    
+    def get_all_todos(self):
         return self.collection.find()
     
     
@@ -85,7 +94,7 @@ class Eqptdb:
         self.collection = Eqpts
     
     def new_input(self, dtls):
-        return self.collection.insert_one(dtls.__dict__)
+        return self.collection.insert_one(dtls.__dict__).inserted_id
     
     def update_eqpt_dtls(self,eqpt_id, dtls):
         return self.collection.update_one({"_id":ObjectId(eqpt_id)},{"$set":dtls.__dict__}).modified_count>0
@@ -96,11 +105,14 @@ class Eqptdb:
     def get_eqpt_by_id(self, eqpt_id):
         return self.collection.find_one({"_id":ObjectId(eqpt_id)})
     
+    def get_eqpt_by_name(self, eqpt_name):
+        return self.collection.find_one({'$text':{'$search':eqpt_name}})
+    
     def get_all_eqpt(self):
-        return self.collection.find()
+        return self.collection.find().sort("name")
     
     def get_all_available_eqpt(self):
-        return self.collection.find({"status":"available"})
+        return self.collection.find({"status":"available"}).sort("name")
     
     
 class lost_eqptdb:
@@ -108,10 +120,10 @@ class lost_eqptdb:
         self.collection = lost_eqpts
         
     def new_input(self, dtls):
-        return self.collection.insert_one(dtls.__dict__)
+        return self.collection.insert_one(dtls.__dict__).inserted_id
 
     def get_all(self):
-        return self.collection.find()
+        return self.collection.find().sort("date_time")
     
     def get_eqpt_by_id(self, eqpt_id):
         return self.collection.find_one({"_id":ObjectId(eqpt_id)})
@@ -128,41 +140,78 @@ class Requestdb:
         self.collection = Requests
     
     def insert_new(self, request):
-        return self.collection.insert_one(request.__dict__)  
+        return self.collection.insert_one(request.__dict__).inserted_id
     
     def get_all(self):
-        return self.collection.find()
+        return self.collection.find().sort("date_time", -1)
     
     def get_by_request_id(self, _id):
         return self.collection.find_one({"_id":ObjectId(_id)})
 
     def get_by_sender(self, _id, uid):
-        return self.collection.find({"sender":{"_id":_id, "uid":uid}})
+        return self.collection.find({"sender":{"_id":_id, "uid":uid}}).sort("date_time", -1)
+    
+    def get_by_sender_limited(self, _id, uid):
+        return self.collection.find({"sender":{"_id":_id, "uid":uid}}).sort("date_time", -1).limit(3)
     
     def get_by_recipient(self, position, _id):
-        return self.collection.find({"recipient":{"position":position, "id":ObjectId(_id)}})
+        return self.collection.find({"recipient":{"position":position, "id":ObjectId(_id)}}).sort("date_time", -1)
+    
+    def get_by_recipient_limited(self, position, user_id):
+        return self.collection.find({"recipient":{"position":position, "id":ObjectId(user_id)}}).sort("date_time", -1).limit(3)
+    
+    def update_request_dtls(self,request_id, dtls):
+        return self.collection.update_one({"_id":ObjectId(request_id)},{"$set":dtls.__dict__}).modified_count>0
     
     def delete_request(self, request_id):
         return self.collection.delete_one({"_id":ObjectId(request_id)}).deleted_count>0
+    
+    def approve_request(self,request_id):
+        return self.collection.update_one({"_id":ObjectId(request_id)},{"$set":{"status":"Approved"}}).modified_count>0
+    
+    def decline_request(self,request_id):
+        return self.collection.update_one({"_id":ObjectId(request_id)},{"$set":{"status":"Declined"}}).modified_count>0
+ 
     
 class Reportdb:
     def __init__(self) -> None:
         self.collection = Reports
     
     def insert_new(self, request):
-        return self.collection.insert_one(request.__dict__)  
+        return self.collection.insert_one(request.__dict__).inserted_id 
     
     def get_all(self):
-        return self.collection.find()
+        return self.collection.find().sort("date_time", -1)
     
-    def get_by_request_id(self, _id):
+    def get_by_report_id(self, _id):
         return self.collection.find_one({"_id":ObjectId(_id)})
 
     def get_by_sender(self, _id, uid):
-        return self.collection.find({"sender":{"_id":_id, "uid":uid}})
+        return self.collection.find({"sender":{"_id":_id, "uid":uid}}).sort("date_time", -1)
+    
+    def get_by_sender_limited(self, _id, uid):
+        return self.collection.find({"sender":{"_id":_id, "uid":uid}}).sort("date_time", -1).limit(3)
     
     def get_by_recipient(self, position):
-        return self.collection.find({"recipient":position})
+        return self.collection.find({"recipient":position}).sort("date_time", -1)
+    
+    def get_by_recipient_limited(self, position):
+        return self.collection.find({"recipient":position}).sort("date_time", -1).limit(3)
+    
+    def update_report_dtls(self,report_id, dtls):
+        return self.collection.update_one({"_id":ObjectId(report_id)},{"$set":dtls.__dict__}).modified_count>0
+    
+    def report_feedback(self,report_id, dtls):
+        return self.collection.update_one({"_id":ObjectId(report_id)},{"$set":dtls}).modified_count>0
+    
+    def mark_completed(self,report_id):
+        return self.collection.update_one({"_id":ObjectId(report_id)},{"$set":{"status":"Completed"}}).modified_count>0
+    
+    def mark_incomplete(self,report_id):
+        return self.collection.update_one({"_id":ObjectId(report_id)},{"$set":{"status":"Incomplete"}}).modified_count>0
+    
+    def delete_report(self, report_id):
+        return self.collection.delete_one({"_id":ObjectId(report_id)}).deleted_count>0
 
     
 class Projectdb:
@@ -170,23 +219,51 @@ class Projectdb:
         self.collection = Projects
     
     def insert_new(self, request):
-        return self.collection.insert_one(request.__dict__)   
+        return self.collection.insert_one(request.__dict__).inserted_id  
     
     def get_all(self):
-        return self.collection.find()
+        return self.collection.find().sort("date_time")
     
-    def get_by_request_id(self, _id):
+    def get_by_project_id(self, _id):
         return self.collection.find_one({"_id":ObjectId(_id)})
+    
+    def get_submitted_file(self, id):
+        return self.collection.find_one({"submission.id":id})
 
     def get_by_sender(self, _id, uid):
-        return self.collection.find({"sender":{"_id":_id, "uid":uid}})
+        return self.collection.find({"sender":{"_id":_id, "uid":uid}}).sort("date_time", -1)
     
-    def get_by_recipient(self, position, _id):
-        return self.collection.find({"recipient":{"position":position, "id":ObjectId(_id)}})
+    def get_by_sender_limited(self, _id, uid):
+        return self.collection.find({"sender":{"_id":_id, "uid":uid}}).sort("date_time", -1).limit(4)
     
-    def get_by_choice_recipient(self, stack):
-        return self.collection.find({"stack": stack})
+    def get_by_recipient_dtls(self, category, recipient, name):
+        return self.collection.find({"recipient_dtls":{"category":category, "recipient": recipient, "name":name}}).sort("date_time", -1)
     
+    def get_by_recipient_dtls_limited(self, category, recipient, name):
+        return self.collection.find({"recipient_dtls":{"category":category, "recipient": recipient, "name":name}}).sort("date_time", -1).limit(4)
+    
+    def update_project_dtls(self, project_id, dtls):
+        return self.collection.update_one({"_id":ObjectId(project_id)},{"$set":dtls.__dict__}).modified_count>0
+    
+    def submit_project(self, project_id, dtls, no_submissions):
+        return self.collection.update_one({"_id":ObjectId(project_id)},{"$set":{"submissions":dtls, "no_submissions":no_submissions}}).modified_count>0
+    
+    def mark_project(self,project_id, project):
+        return self.collection.update_one({"_id":ObjectId(project_id)},{"$set":{"submissions":project}}).modified_count>0
+    
+    def delete_project(self, project_id):
+        return self.collection.delete_one({"_id":ObjectId(project_id)}).deleted_count>0
+    
+
+class Inventorydb:
+    def __init__(self) -> None:
+        self.collection = Inventory
+    
+    def insert_new(self, dtls):
+        return self.collection.insert_one(dtls.__dict__).inserted_id
+    
+    def get_all(self):
+        return self.collection.find().sort("date_inserted")
      
 
     
@@ -216,6 +293,28 @@ class generate:
             
         return _id 
     
+    def file_id():
+        max = int(16)
+        digits = string.digits
+        file_id = ""
+        
+        for index in range(max):
+            file_id = file_id + random.choice(digits)
+            
+            # if Users.find_one({"pwd":_id}) == "None": 
+            #     break
+            
+        return file_id 
+    
+    def OTP():
+        length = int(6)
+        characters = string.digits
+        otp = ""     
+        for index in range(length):
+            otp = otp + random.choice(characters)
+            
+        return otp
+    
 class User:
     def __init__(self, firstname, surname, fullname, hashed_pwd, uid, stack, niche, role, phone_num, email, mentor_id, avatar, task_id, bio, location, bday, datetime_created) -> None:
         self.firstname = firstname
@@ -237,7 +336,7 @@ class User:
         self.bday = bday
 
 class Eqpt:
-    def __init__(self, name, quantity, description, date_of_arrival, type, status, datetime_inputed, date_updated) -> None:
+    def __init__(self, name, quantity, description, date_of_arrival, type, status, datetime_inputed, date_inserted) -> None:
         self.name = name
         self.quantity = quantity
         self.description = description
@@ -245,7 +344,13 @@ class Eqpt:
         self.type = type
         self.status = status
         self.datetime_inputed = datetime_inputed
-        self.date_updated = date_updated
+        self.date_inserted = date_inserted
+        
+class existEqpt:
+    def __init__(self, quantity, datetime_inputed, status) -> None:
+        self.quantity = quantity
+        self.datetime_inputed = datetime_inputed
+        self.status = status
 
 class lostEqpt:
     def __init__(self, eqpt_id, name, type, quantity, personnel_id, status, date_reported, date_edited) -> None:
@@ -293,10 +398,10 @@ class AdminUpdateUser:
         self.role = role
         
 class Request:
-    def __init__(self, title, type, eqpt_id, quantity, date_from, date_to, purpose, sender, recipient_dtls, status, date_submitted) -> None:
+    def __init__(self, title, type, eqpt, quantity, date_from, date_to, purpose, sender, recipient_dtls, status, date_submitted, date_time) -> None:
         self.title = title
         self.type = type
-        self.eqpt_id = eqpt_id
+        self.eqpt = eqpt
         self.quantity = quantity
         self.date_from = date_from
         self.date_to = date_to
@@ -305,25 +410,39 @@ class Request:
         self.recipient = recipient_dtls
         self.status = status
         self.date_submitted = date_submitted
+        self.date_time = date_time
         
 class Project:
-    def __init__(self, topic, focus, objectives, recipient, sender, date_submitted) -> None:
+    def __init__(self, topic, focus, objectives, recipient_dtls, sender, date_created, deadline, date_time) -> None:
         self.topic = topic
         self.focus = focus
         self.objectives = objectives
-        self.recipient = recipient
+        self.recipient_dtls = recipient_dtls
         self.sender = sender
-        self.date_submitted = date_submitted
+        self.date_created = date_created
+        self.deadline = deadline
+        self.date_time = date_time
         
 class Report:
-    def __init__(self, title, report_no, content, recipient, sender, date_submitted) -> None:
+    def __init__(self, title, report_no, content, recipient, sender, date_submitted, status, date_time) -> None:
         self.title = title
         self.report_no = report_no
         self.content = content
         self.recipient = recipient
         self.sender = sender
         self.date_submitted = date_submitted
+        self.status = status
+        self.date_time = date_time
         
+class AllowedExtension:    
+    def images(filename):
+        ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'svg'} 
+        return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    
+    def files(filename):
+        ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docs','docx', } 
+        return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 class Available:
     def __init__(self, _quantity, _status) -> None:
         self.status = _status
@@ -336,6 +455,9 @@ class updateEmail:
 class updatePwd:
     def __init__(self, hashed_pwd) -> None:
         self.hashed_pwd = hashed_pwd
+
+def sortFunc(e):
+  return e["date_time"]
 
 
 

@@ -21,6 +21,7 @@
             <select class="form-select mt-3" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);" name="eqpt_id">
               
               {% for item in eqpts%}
+              <option value="None">None</option>
                   <option value="{{item._id}}">{{item.name}}</option>
               {% endfor %}
             </select>
