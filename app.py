@@ -154,7 +154,7 @@ def change_password():
             flash("Unmatching password input! Unable to update your password", "danger")
             return render_template('forms/change_password.html')
 
-@app.get('/Admin/create/user')
+@app.post('/Admin/create/user')
 def create_user():
     
     # if "user_id" in session:
