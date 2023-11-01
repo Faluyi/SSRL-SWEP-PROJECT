@@ -10,7 +10,6 @@ from properties import *
 import cloudinary
 from cloudinary import uploader
 import urllib.request
-import numpy as np
 
 User_db = Userdb()
 Eqpt_db = Eqptdb()
