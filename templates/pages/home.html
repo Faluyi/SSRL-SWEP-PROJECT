@@ -226,7 +226,7 @@ button{
             <tr>
                 <td>{{item.date}}</td>
                 <td>{{item.time_in}}</td>
-                <td>{{item.time_in}}</td>
+                <td>{{item.time_out}}</td>
             </tr>
         
             {% endfor %}
@@ -450,19 +450,22 @@ button{
           <h5 class="modal-title" id="exampleModalLabel">Mark Attendance</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body">
-          <div class="form-check">
-            <input type="radio" class="form-check-input" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);" id="sign_in" name="sign_in" value="in">Sign in
-            <label class="form-check-label" for="radio1"></label>
-          </div>
-          <div class="form-check">
-            <input type="radio" class="form-check-input"  style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);"id="ra" name="sign_out" value="out">Sign out
-            <label class="form-check-label" for="radio2"></label>
-          </div>
-        </div>
-        <div class="modal-footer" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
-          <button type="button" class="btn" style="background: linear-gradient(267.33deg, #386641 5.13%, #9BB2A0 94.79%);">Save changes</button>
-        </div>
+          <form id = "attendance_form">
+            <div class="modal-body">
+              <div class="form-check">
+                <input type="radio" class="form-check-input"  id="status" name="status" value="in" checked>Sign in
+                <label class="form-check-label" for="radio1"></label>
+              </div>
+              <div class="form-check">
+                <input type="radio" class="form-check-input" id="status" name="status" value="out">Sign out
+                <label class="form-check-label" for="radio2"></label>
+              </div>
+            </div>
+              <label id="demo"></label>
+            <div class="modal-footer" style="background: rgba(205, 217, 207, 1); border-color: rgba(106, 140, 112, 1);">
+              <button type="button" onclick="getLocation()" class="btn" style="background: linear-gradient(267.33deg, #386641 5.13%, #9BB2A0 94.79%);">Save changes</button>
+            </div>
+          </form>
       </div>
     </div>
   </div>
@@ -611,8 +614,6 @@ button{
 </div>
 
 <script>
- 
-
   
   document.getElementById('form').onsubmit = function(e) {
     e.preventDefault();
@@ -759,6 +760,29 @@ button{
 
 }
 
+
+function getLocation() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(markAttendance);
+  } else { 
+    demo.innerHTML = "Geolocation is not supported by this browser.";
+  }
+}
+
+function markAttendance(position) {
+ 
+  var ele = document.getElementsByName('status');
+
+  for (i = 0 ; i < ele.length; i++) {
+    if (ele[i].checked){
+        var status = ele[i].value;
+        var curr_latitude = position.coords.latitude;
+        var curr_longitude = position.coords.longitude;
+
+        window.location = "/attendance?status=" + status + "&curr_latitude=" + curr_latitude + "&curr_longitude=" + curr_longitude;
+    } 
+  }
+}
   
 </script>
 

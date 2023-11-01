@@ -10,6 +10,7 @@ from properties import *
 import cloudinary
 from cloudinary import uploader
 import urllib.request
+import numpy as np
 
 User_db = Userdb()
 Eqpt_db = Eqptdb()
@@ -19,6 +20,7 @@ Request_db = Requestdb()
 Report_db = Reportdb()
 Project_db = Projectdb()
 Todos_db = Todosdb()
+Attendance_db  = Attendancedb()
 
 UPLOAD_FOLDER = 'static/images'
 PROJECT_FOLDER = 'submissions/projects'
@@ -284,12 +286,15 @@ def home():
             requests = list(Request_db.get_by_recipient_limited(position=user_role, user_id=user_id))
             projects = list(Project_db.get_by_sender_limited(user_id, uid))
             personnels = list(User_db.get_all_users())
+            
 
             return render_template("pages/home.html", user_profile=user_profile, date=date, members=members, reports=reports, requests=requests, projects=projects, personnels=personnels, todos=todos)
             
         elif user_role == "Intern":
             reports =list(Report_db.get_by_sender(user_id, uid))
             requests = list(Request_db.get_by_sender(user_id, uid))
+            attendance = list(Attendance_db.get_attendance(user_id))
+    
             projects = []
             
             project_all = list(Project_db.get_by_recipient_dtls(category="all", recipient=stack, name="All stack members"))
@@ -303,15 +308,17 @@ def home():
             projects.sort(reverse=True, key=sortFunc)
                 
             members = list(User_db.get_users_by_stack_limited(stack))
-            return render_template("pages/home.html", user_profile=user_profile, date=date, members=members, reports=reports, requests=requests, projects=projects, todos=todos)
+            return render_template("pages/home.html", user_profile=user_profile, date=date, members=members, reports=reports, requests=requests, projects=projects, todos=todos, attendance=attendance)
         
         elif user_role == "Lead":
             reports =list(Report_db.get_by_sender(user_id, uid))
             requests = list(Request_db.get_by_sender(user_id, uid))
             projects = list(Project_db.get_by_recipient_dtls(category="one", recipient=user_id, name=uid))
+            attendance = list(Attendance_db.get_attendance(user_id))
+            
                 
             members = list(User_db.get_users_by_stack_limited(stack))
-            return render_template("pages/home.html", user_profile=user_profile, date=date, members=members, reports=reports, requests=requests, projects=projects, todos=todos)
+            return render_template("pages/home.html", user_profile=user_profile, date=date, members=members, reports=reports, requests=requests, projects=projects, todos=todos, attendance=attendance)
         
         else:
             flash("permission not granted!", "danger")
@@ -2356,7 +2363,7 @@ def submit_feedback(project_id, id):
         submissions = Project_db.get_by_project_id(project_id)["submissions"]
         
         for  x in submissions:
-            if x["id"]==id:
+            if x["id"] == id:
                 x["feedback"] = request.form.get("feedback")
                 
         submitted = Project_db.mark_project(project_id, submissions)
@@ -2503,6 +2510,92 @@ def all_todos():
     else:
         flash  ('you are not logged in!', "danger")
         return redirect(url_for('login'))
+
+@app.get('/attendance')
+def mark_atendance():
+    if "user_id" in session:
+        
+        date_time = datetime.now()
+        user_uid = session["user_uid"]
+        user_id = session["user_id"]
+        app.logger.info(date_time)
+        body = request.args
+        status = body['status']
+        curr_latitude = float(body.get('curr_latitude')) * 10000000
+        curr_longitude = float(body.get('curr_longitude')) * 10000000
+        app.logger.info(curr_latitude)
+        app.logger.info(curr_longitude)
+        app.logger.info(status)
+        
+        long_lower = 51340485
+        long_upper = 51345743
+        lat_lower = 72977636
+        lat_upper = 73001205
+        
+        
+            
+            
+        if status == "in":
+            app.logger.info("marking...")
+            if "signed_in" in session and (session["signed_in"]).strftime("%x") == date_time.strftime("%x"):
+                app.logger.info('already signed in....')
+            
+                flash ('you are already signed in', "info")
+                return redirect(url_for('home'))
+                
+            elif int(curr_latitude) in range(lat_lower, lat_upper) and int(curr_longitude) in range(long_lower, long_upper):
+                app.logger.info('getting data....')
+                try:
+                    attendance_id = Attendance_db.sign_in({"user_id": user_id, "user_uid": user_uid, "date_time":date_time, "date": date_time.strftime("%x"), "time_in": date_time.strftime("%X"), "time_out":"", "status": status})
+                    session["attendance_id"] = str(attendance_id)
+                    session["signed_in"] = date_time
+                    app.logger.info('signed in....')
+                    
+                    flash ('successfully signed in', "success")
+                    return redirect(url_for('home'))
+            
+                except:
+                    flash ('unable to sign you in at this time, try again!', "danger")
+                    return redirect(url_for("home"))
+                
+            else:
+                flash ('Unable to sign you in a this time, seems you aren\'t in the laboratory!', "danger")
+                return redirect(url_for("home"))
+                
+        elif status == "out":
+            if "signed_in" in session and (session["signed_in"]).strftime("%x") == date_time.strftime("%x"):
+                app.logger.info('you need to sign in')
+                if "signed_out" in session and (session["signed_out"]).strftime("%x") == date_time.strftime("%x"):
+                    
+                    app.logger.info('you already sign out at' + (session["signed_out"]).strftime("%x"))
+                    
+                    flash ('you are already signed out', "info")
+                    return redirect(url_for('home'))
+                    
+                elif curr_latitude in range(lat_lower, lat_upper) and curr_longitude in range(long_lower, long_upper):
+                    app.logger.info("signing out....")
+                    try:
+                        attendance_id = session["attendance_id"]
+                        Attendance_db.sign_out(attendance_id, date_time.strftime("%X"), status)
+                    
+                        session["signed_out"] = date_time
+                        app.logger.info('signed out....')
+                        
+                        flash ('successfully signed out', "success")
+                        return redirect(url_for('home'))
+                    except:
+                        flash ('unable to sign you out at this time, try again!', "danger")
+                        return redirect(url_for("home"))
+            else:
+                flash ("You haven't signed in for today", "danger")
+                return redirect(url_for('home'))
+
+    else:
+        flash  ('you are not logged in!', "danger")
+        return redirect(url_for('login'))
+        
+    
+
 
 if __name__=="__main__":
     app.run(debug=True)
