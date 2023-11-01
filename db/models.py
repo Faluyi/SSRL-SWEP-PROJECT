@@ -3,7 +3,7 @@ from bson.objectid import ObjectId
 from properties import *
 import string, random
 
-uri = "mongodb+srv://Faluyi:Akindele@cluster0.ozepuyt.mongodb.net/?retryWrites=true&w=majority"
+uri = "mongodb://localhost:27017"
 client = MongoClient(uri)
 db = client['SSRL_DB']
 Users = db['Users']
@@ -14,6 +14,7 @@ Requests = db["Requests"]
 Reports = db["Reports"]
 Projects = db["projects"]
 Inventory = db["Inventory"]
+Attendance = db["Attendance"]
 
 class Userdb:
     def __init__(self) -> None:
@@ -264,6 +265,19 @@ class Inventorydb:
     
     def get_all(self):
         return self.collection.find().sort("date_inserted")
+    
+class Attendancedb:
+    def __init__(self) -> None:
+        self.collection = Attendance
+    
+    def sign_in(self, dtls):
+        return self.collection.insert_one(dtls).inserted_id
+    
+    def sign_out(self, attendance_id, time_out, status):
+        return self.collection.update_one({"_id":ObjectId(attendance_id)},{"$set":{"time_out": time_out, "status": status}}).modified_count>0
+    
+    def get_attendance(self, user_id):
+        return self.collection.find({"user_id": user_id}).sort("date_time", -1).limit(3)
      
 
     
@@ -440,7 +454,7 @@ class AllowedExtension:
         return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
     
     def files(filename):
-        ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docs','docx', } 
+        ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docs','docx'} 
         return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 class Available:
