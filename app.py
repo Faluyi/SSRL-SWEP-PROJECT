@@ -20,6 +20,8 @@ Report_db = Reportdb()
 Project_db = Projectdb()
 Todos_db = Todosdb()
 Attendance_db  = Attendancedb()
+Attendance_db_v2  = Attendancedb_v2()
+
 
 UPLOAD_FOLDER = 'static/images'
 PROJECT_FOLDER = 'submissions/projects'
@@ -50,7 +52,19 @@ cloudinary.config(
 mail = Mail(app)
 
 
-
+def authenticate_user_for_attendance(user_uid, pwd):
+    user_profile = User_db.get_user_by_uid(user_uid)
+    
+    
+    if user_profile:
+        authenticated = check_password_hash(user_profile["hashed_pwd"], pwd)
+        if authenticated:
+            return True
+        else:
+            return False
+        
+    else:
+        return False
 
 @app.get('/')
 def login():
@@ -2593,7 +2607,82 @@ def mark_atendance():
         flash  ('you are not logged in!', "danger")
         return redirect(url_for('login'))
         
+
+@app.post('/api/user/attendance')
+def mark_atendance_api():
+        
+        body = request.get_json()
+        date_time = datetime.now()
+        user_uid = body["user_uid"]
+        scanned_data = body["scanned_data"]
+        pwd = body["pwd"]
+        enc_date_time, secret_key = scanned_data.split(",") 
+        app.logger.info(secret_key)
+        app.logger.info(SSRL_SECTRET_KEY)
+        date = enc_date_time.split(" ")   
+        original_datetime = datetime.fromisoformat(str(date_time))
+        
+        formatted_datetime_str = original_datetime.strftime("%m/%d/%Y")
+        
+        if secret_key == SSRL_SECTRET_KEY and date[0] == formatted_datetime_str:
+            authenticated = authenticate_user_for_attendance(user_uid, pwd)    
+            
+            if not authenticated:
+                return jsonify({
+                    "success": False,
+                    "response": "Failed authentication"
+                }), 401
+                
+            
+            user = list(Attendance_db_v2.get_user_attendance_by_date(user_uid, date_time.strftime("%x")))      
+                
+            app.logger.info(user)
+            if user:
+                attendance_id = user[0]["_id"]
+                                        
+                try:
+                    Attendance_db_v2.sign_out(attendance_id, date_time.strftime("%X"), status = "out")
+                
+                    app.logger.info(f'{user_uid} Marked out')
+                    
+                    return jsonify({
+                        "success": True,
+                        "response": "Marked out"
+                    }), 200
+                except:
+                    app.logger.warning("Failed to mark user out!")
+                    return jsonify({
+                        "success": False,
+                        "response": "Server error"
+                    }), 500
+                    
+            else:
+                app.logger.info("marking...")
+                
+                try:
+                    attendance_id = Attendance_db_v2.sign_in({"user_uid": user_uid, "date_time":date_time, "date": date_time.strftime("%x"), "time_in": date_time.strftime("%X"), "time_out":"", "status": "in"})
+                    app.logger.info(f'{user_uid} Marked in')
+                    
+                    return jsonify({
+                        "success": True,
+                        "response": "Marked in"
+                    }), 200
+                except:
+                    app.logger.warning("Failed to mark user in!")
+                    return jsonify({
+                        "success": False,
+                        "response": "Server error"
+                    }), 500
+                
+        else:
+            return jsonify({
+                "success": False,
+                "response": "Invalid data"   
+            }), 401
+   
+        
     
+ 
 
 
 if __name__=="__main__":
