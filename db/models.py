@@ -299,6 +299,9 @@ class Attendancedb_v2:
     def get_user_attendance_by_date(self, user_uid, date):
         return self.collection.find({"user_uid": user_uid, "date":date})
     
+    def get_marked_in_users(self, date):
+        return self.collection.find({"date": date, "status": "in"}).sort("date_time", -1)
+    
     
 class generate:   
     def password():
@@ -487,6 +490,17 @@ class updateEmail:
 class updatePwd:
     def __init__(self, hashed_pwd) -> None:
         self.hashed_pwd = hashed_pwd
+        
+def formatAttendance(dtls):
+    user_dtls = []
+    for dtl in dtls:
+        user_dtl = {}
+        user_dtl["user_uid"] = dtl["user_uid"]
+        user_dtl["date"] = dtl["date"]
+        user_dtl["time_in"] = dtl["time_in"]
+        user_dtls.append(user_dtl)
+        
+    return user_dtls
 
 def sortFunc(e):
   return e["date_time"]

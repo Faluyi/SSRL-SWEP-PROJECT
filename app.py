@@ -2681,8 +2681,48 @@ def mark_atendance_api():
             }), 401
    
         
+@app.post('/api/user/login')
+def api_authenticate_user():
+    body = request.get_json()
     
- 
+    user_uid = body["user_uid"]
+    pwd = body["pwd"]
+    date_time = datetime.now()
+    date = date_time.strftime("%x")
+    authenticated = authenticate_user_for_attendance(user_uid, pwd)
+    
+    marked_in_users = Attendance_db_v2.get_marked_in_users(date)
+    app.logger.info(list(marked_in_users))
+    if authenticated:
+        return jsonify({
+            "success": True,
+            "response": "Authenticated"
+        }), 200
+    else:
+        return jsonify({
+            "success": False,
+            "response": "Unauthorized"
+        }), 401
+        
+        
+@app.get('/api/users')
+def marked_in_users():
+    date_time = datetime.now()
+    date = date_time.strftime("%x")
+    
+    try:
+        marked_in_users = formatAttendance(list(Attendance_db_v2.get_marked_in_users(date)))
+        app.logger.info(marked_in_users)
+        
+        return jsonify({
+            "success": True,
+            "response": marked_in_users
+        }), 200
+    except:
+        return jsonify({
+            "success": False,
+            "response": "Server error"
+        }), 500
 
 
 if __name__=="__main__":
