@@ -3,7 +3,7 @@ from bson.objectid import ObjectId
 from properties import *
 import string, random
 
-uri_web = "mongodb+srv://Faluyi:Akindele@cluster0.ozepuyt.mongodb.net/?retryWrites=true&w=majority"
+uri_web = db_uri
 uri_local = "mongodb://localhost:27017"
 client = MongoClient(uri_web)
 db = client['SSRL_DB']
@@ -16,6 +16,8 @@ Reports = db["Reports"]
 Projects = db["projects"]
 Inventory = db["Inventory"]
 Attendance = db["Attendance"]
+Attendance_v2 = db["Attendance_v2"]
+
 
 class Userdb:
     def __init__(self) -> None:
@@ -281,6 +283,21 @@ class Attendancedb:
         return self.collection.find({"user_id": user_id}).sort("date_time", -1).limit(3)
      
 
+class Attendancedb_v2:
+    def __init__(self) -> None:
+        self.collection = Attendance_v2
+    
+    def sign_in(self, dtls):
+        return self.collection.insert_one(dtls).inserted_id
+    
+    def sign_out(self, attendance_id, time_out, status):
+        return self.collection.update_one({"_id":ObjectId(attendance_id)},{"$set":{"time_out": time_out, "status": status}}).modified_count>0
+    
+    def get_attendance(self, user_id):
+        return self.collection.find({"user_id": user_id}).sort("date_time", -1).limit(3)
+     
+    def get_user_attendance_by_date(self, user_uid, date):
+        return self.collection.find({"user_uid": user_uid, "date":date})
     
     
 class generate:   
