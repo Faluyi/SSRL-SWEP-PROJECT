@@ -10,6 +10,7 @@ from properties import *
 import cloudinary
 from cloudinary import uploader
 import urllib.request
+from auth import authenticate_user_for_attendance, decrypt
 
 User_db = Userdb()
 Eqpt_db = Eqptdb()
@@ -52,19 +53,7 @@ cloudinary.config(
 mail = Mail(app)
 
 
-def authenticate_user_for_attendance(user_uid, pwd):
-    user_profile = User_db.get_user_by_uid(user_uid)
-    
-    
-    if user_profile:
-        authenticated = check_password_hash(user_profile["hashed_pwd"], pwd)
-        if authenticated:
-            return True
-        else:
-            return False
-        
-    else:
-        return False
+
 
 @app.get('/')
 def login():
@@ -2616,7 +2605,8 @@ def mark_atendance_api():
         user_uid = body["user_uid"]
         scanned_data = body["scanned_data"]
         pwd = body["pwd"]
-        enc_date_time, secret_key = scanned_data.split(",") 
+        decrypted_scanned_data = decrypt(scanned_data)
+        enc_date_time, secret_key = decrypted_scanned_data.split(",") 
         app.logger.info(secret_key)
         app.logger.info(SSRL_SECTRET_KEY)
         date = enc_date_time.split(" ")   
