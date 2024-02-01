@@ -2605,14 +2605,18 @@ def mark_atendance_api():
         user_uid = body["user_uid"]
         scanned_data = body["scanned_data"]
         pwd = body["pwd"]
-        decrypted_scanned_data = decrypt(scanned_data)
-        enc_date_time, secret_key = decrypted_scanned_data.split(",") 
+        app.logger.info(user_uid)
+        app.logger.info(scanned_data)
+        app.logger.info(pwd)
+        
+        date_time, encrypted_secret_key = scanned_data.split(",") 
+        secret_key = decrypt(encrypted_secret_key)
         app.logger.info(secret_key)
         app.logger.info(SSRL_SECTRET_KEY)
-        date = enc_date_time.split(" ")   
+        date = date_time.split(" ")   
         original_datetime = datetime.fromisoformat(str(date_time))
         
-        formatted_datetime_str = original_datetime.strftime("%m/%d/%Y")
+        formatted_datetime_str = original_datetime.strftime("%Y/%m/%d")
         
         if secret_key == SSRL_SECTRET_KEY and date[0] == formatted_datetime_str:
             authenticated = authenticate_user_for_attendance(user_uid, pwd)    

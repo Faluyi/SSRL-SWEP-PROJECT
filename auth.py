@@ -43,3 +43,5 @@ def decrypt(enc_text):
 
     return ''.join(clear_text)
 
+
+# print(decrypt("=;9D=<9;<D::C*C"))
