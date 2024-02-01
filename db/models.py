@@ -5,7 +5,7 @@ import string, random
 
 uri_web = db_uri
 uri_local = "mongodb://localhost:27017"
-client = MongoClient(uri_local)
+client = MongoClient(uri_web)
 db = client['SSRL_DB']
 Users = db['Users']
 Todos = db['Todos']
